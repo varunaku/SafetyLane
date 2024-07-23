@@ -1,23 +1,24 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, PermissionsAndroid, Button } from 'react-native';
+import { StyleSheet, Text, View, PermissionsAndroid, Pressable, Button, TextInput } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import { useState, useEffect, useRef } from "react";
 import { btoa, atob } from "react-native-quick-base64";
-import base64 from "react-native-quick-base64";
 
 const bleManager = new BleManager();
 
 // Android Bluetooth Permission for location, may not be needed, if not remove permissions from AndroidManifest.xml
 
-//uuids at 20:40 in video
-const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-const STEP_DATA_CHAR_UUID = "beefcafe-36e1-4688-b7f5-00000000000b";
+//TODO: There is a bug where the device attempts to reconnect while already connected, and it detects a duplicate connection but keeps trying to connect anyway. Implement handling for this
+
+const SERVICE_UUID = "137f26d4-af6f-40cd-bccd-1dcf833c71d0";
+const CHARACTERISTIC_UUID = "b06c0815-ebc6-43a3-ac68-025c7dd0ee77";
 
 
 export default function App() {
   const [deviceID, setDeviceID] = useState(null);
-  const [distance, setDistance] = useState(0);
-  const [stepDataChar, setStepDataChar] = useState(null);
+  const [coneSeperation, setConeSeperation] = useState(1);
+  // const [distance, setDistance] = useState(0); //Distance is used as a dummy variable for data received by esp32. Uncomment this and write characteristic data inside the arduino code to restore this functionality, examine previous commits if confusing
+  const [dataCharacteristic, setDataCharacteristic] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState("searching...");
   const [connected, setConnected] = useState(false);
   const [permissions, setPermissions] = useState(false);
@@ -107,37 +108,41 @@ export default function App() {
       }
     });
   };
-  async function sendData() {
-    setDistance(distance + 1);
-    console.log("new distance ====", distance);
+  async function sendData(value) {
+    // setDistance(distance + 1);
+    console.log("new value ====", value);
     try {
       console.log("deviceid", deviceID);
       console.log("service uuid", SERVICE_UUID);
-      console.log("service uuid", STEP_DATA_CHAR_UUID);
-      encodedData = btoa(distance.toString());
+      console.log("service uuid", CHARACTERISTIC_UUID);
+      encodedData = btoa(value.toString());
 
     bleManager.writeCharacteristicWithResponseForDevice(
       deviceID,
       SERVICE_UUID,
-      STEP_DATA_CHAR_UUID,
+      CHARACTERISTIC_UUID,
       encodedData
     ).then(characteristic => {
-      console.log('value changed to ', btoa(characteristic.value))
+      console.log('value changed to ', characteristic.value)
     })
   } catch (err) {
     console.log("Error: ", err)
   }
 };
 
-  // console.log("past permisisons");
-  // searchAndConnectToDevice();
-  // console.log("tried search");
-
-
-  // while(connected ) {
-  //   console.log("inside of while")
-  //   searchAndConnectToDevice();
-  // }
+  function handlePress(value) {
+    console.log("bressable Pressed Down ", value);
+    sendData(value);
+  };
+  function handleRelease() {
+    console.log("button released", 0);
+    sendData(0);
+  };
+  function onSubmitSeperation() {
+    console.log("new seperation: ", coneSeperation)
+    newNum = +coneSeperation + 50
+    sendData(newNum);
+  }
 
   const deviceRef = useRef(null);
 
@@ -146,14 +151,7 @@ export default function App() {
     console.log("inside of useeffect")
     if (permissions) {
       searchAndConnectToDevice();
-    }
-    // requestLocationPermission();
-    // requestPermissions();
-
-    }, [permissions]);
-  // const connectToDevice = (device) => {
-  //   console.log("MADE IT INTO CONNECT TO DEVICE!");
-  // }
+    }}, [permissions]);
 
   const connectToDevice = (device) => {
     console.log("connect start")
@@ -176,12 +174,12 @@ export default function App() {
         return service.characteristics();
       })
       .then((characteristics) => {
-        let stepDataCharacteristic = characteristics.find(
-          (char) => char.uuid === STEP_DATA_CHAR_UUID
+        let characteristic = characteristics.find(
+          (char) => char.uuid === CHARACTERISTIC_UUID
         );
-        console.log("finding step data char uuid of", STEP_DATA_CHAR_UUID)
-        setStepDataChar(stepDataCharacteristic);
-        stepDataCharacteristic.monitor((error, char) => {
+        console.log("finding data char uuid of", CHARACTERISTIC_UUID)
+        setDataCharacteristic(characteristic);
+        characteristic.monitor((error, char) => {
           if (error) {
             console.error(error);
             return;
@@ -208,7 +206,6 @@ export default function App() {
         }
         setConnectionStatus("Disconnected");
         console.log("Disconnected device");
-        setDistance(0); // Reset the step count
         if (deviceRef.current) {
           setConnectionStatus("Reconnecting...");
           connectToDevice(deviceRef.current)
@@ -225,14 +222,57 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Text>testtestest!</Text>
-      <Text>{distance}</Text>
-      <Text>{connectionStatus}</Text>
-      <Button
-        onPress={sendData}
-        title="Increment Distance"
-        color="#841584"
-      />
+      {/* <Text>{distance}</Text> */}
+      <Text style={{marginBottom: 30}}>{connectionStatus}</Text>
+      <Pressable
+        style={styles.InputContainer}
+        onPressIn={()=>handlePress(1)}
+      >
+        <Text style={styles.buttonText}>Cone Seperation: </Text>
+          <TextInput 
+          style={styles.buttonText}
+          onChangeText={setConeSeperation}
+          onSubmitEditing={onSubmitSeperation}
+          value={coneSeperation}
+          defaultValue='1'
+          keyboardType="numeric"
+        />
+        <Text style={styles.buttonText}>m</Text>
+      </Pressable>
+      <Pressable
+        style={styles.InputContainer}
+        onPressIn={()=>handlePress(6)}
+      >
+        <Text style={styles.buttonText}>Realign Cones</Text>
+      </Pressable>
+      <Pressable
+        style={styles.buttonContainer}
+        onPressIn={()=>handlePress(1)}
+        onPressOut={handleRelease}
+      >
+        <Text style={styles.buttonText}>Move Forwards</Text>
+      </Pressable>
+      <Pressable
+        style={styles.buttonContainer}
+        onPressIn={()=>handlePress(2)}
+        onPressOut={handleRelease}
+      >
+        <Text style={styles.buttonText}>Turn Left</Text>
+      </Pressable>
+      <Pressable
+        style={styles.buttonContainer}
+        onPressIn={()=>handlePress(3)}
+        onPressOut={handleRelease}
+      >
+        <Text style={styles.buttonText}>Turn Right</Text>
+      </Pressable>
+      <Pressable
+        style={styles.buttonContainer}
+        onPressIn={()=>handlePress(4)}
+        onPressOut={handleRelease}
+      >
+        <Text style={styles.buttonText}>Move Backwards</Text>
+      </Pressable>      
       <StatusBar style="auto" />
     </View>
   );
@@ -247,5 +287,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  InputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#89CFF0',
+    borderRadius: 5,
+    marginHorizontal: 5,
+    padding: 10,
+  },
+  buttonContainer: {
+    alignItems: 'center',
+    backgroundColor: '#841584',
+    borderRadius: 5,
+    marginHorizontal: 5,
+    padding: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

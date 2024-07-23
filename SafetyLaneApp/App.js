@@ -1,8 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, PermissionsAndroid } from 'react-native';
+import { StyleSheet, Text, View, PermissionsAndroid, Button } from 'react-native';
 import { BleManager } from 'react-native-ble-plx';
 import { useState, useEffect, useRef } from "react";
 import { btoa, atob } from "react-native-quick-base64";
+import base64 from "react-native-quick-base64";
 
 const bleManager = new BleManager();
 
@@ -106,6 +107,27 @@ export default function App() {
       }
     });
   };
+  async function sendData() {
+    setDistance(distance + 1);
+    console.log("new distance ====", distance);
+    try {
+      console.log("deviceid", deviceID);
+      console.log("service uuid", SERVICE_UUID);
+      console.log("service uuid", STEP_DATA_CHAR_UUID);
+      encodedData = btoa(distance.toString());
+
+    bleManager.writeCharacteristicWithResponseForDevice(
+      deviceID,
+      SERVICE_UUID,
+      STEP_DATA_CHAR_UUID,
+      encodedData
+    ).then(characteristic => {
+      console.log('value changed to ', btoa(characteristic.value))
+    })
+  } catch (err) {
+    console.log("Error: ", err)
+  }
+};
 
   // console.log("past permisisons");
   // searchAndConnectToDevice();
@@ -166,7 +188,7 @@ export default function App() {
           }
           const rawData = atob(char.value);
           console.log("Received data:", rawData);
-          setDistance(rawData);
+          // setDistance(rawData);
         });
       })
       .catch((error) => {
@@ -206,6 +228,11 @@ export default function App() {
       <Text>testtestest!</Text>
       <Text>{distance}</Text>
       <Text>{connectionStatus}</Text>
+      <Button
+        onPress={sendData}
+        title="Increment Distance"
+        color="#841584"
+      />
       <StatusBar style="auto" />
     </View>
   );

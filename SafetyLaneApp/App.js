@@ -95,6 +95,7 @@ export default function App() {
     bleManager.startDeviceScan(null, null, (error, device) => {
       if (error) {
         console.log("errored out")
+        console.log(device)
         console.error(error);
         setConnectionStatus("Error searching for devices");
         return;

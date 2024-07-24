@@ -5,10 +5,10 @@
 #include <BLE2902.h>
 #include "ESP32MotorControl.h"
 
-#define M1_FWD_PIN D0
-#define M1_RVS_PIN D2
-#define M2_FWD_PIN D3
-#define M2_RVS_PIN D4
+#define M1_FWD_PIN D2
+#define M1_RVS_PIN D3
+#define M2_FWD_PIN D4
+#define M2_RVS_PIN D5
 
 ESP32MotorControl motors = ESP32MotorControl();
 
@@ -123,11 +123,11 @@ void loop() {
   Serial.println(distance);
   if (distance == "1") {
   Serial.println("fwd");
-    set_motor(motors, 100, 100);
+    set_motor(motors, 100, -100);
   }
   if (distance == "2") {
   Serial.println("lft");
-    set_motor(motors, 0, 100);
+    set_motor(motors, 0, -100);
   }
   if (distance == "3") {
   Serial.println("rt");
@@ -135,7 +135,7 @@ void loop() {
   }
   if (distance == "4") {
     Serial.println("bk");
-    set_motor(motors, -50, -50);
+    set_motor(motors, -100, 100);
   }
   if (distance == "0") {
     Serial.println("stop");

@@ -22,7 +22,8 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState("searching...");
   const [connected, setConnected] = useState(false);
   const [permissions, setPermissions] = useState(false);
-
+  const [dotColor, setDotColor] = useState("transparent");
+  
   async function requestLocationPermission() {
     try {
       const granted = await PermissionsAndroid.request(
@@ -152,6 +153,10 @@ export default function App() {
     console.log("inside of useeffect")
     if (permissions) {
       searchAndConnectToDevice();
+      // while (connectionStatus == "Error searching for devices") {
+      //   console.log("inside while, second run")
+      //   searchAndConnectToDevice();
+      // }
     }}, [permissions]);
 
   const connectToDevice = (device) => {
@@ -222,58 +227,61 @@ export default function App() {
   }, [deviceID]);
 
   return (
+
     <View style={styles.container}>
-      {/* <Text>{distance}</Text> */}
-      <Text style={{marginBottom: 30}}>{connectionStatus}</Text>
-      <Pressable
-        style={styles.InputContainer}
-        onPressIn={()=>handlePress(1)}
-      >
-        <Text style={styles.buttonText}>Cone Seperation: </Text>
-          <TextInput 
-          style={styles.buttonText}
-          onChangeText={setConeSeperation}
-          onSubmitEditing={onSubmitSeperation}
-          value={coneSeperation}
-          defaultValue='1'
-          keyboardType="numeric"
-        />
-        <Text style={styles.buttonText}>m</Text>
-      </Pressable>
-      <Pressable
-        style={styles.InputContainer}
-        onPressIn={()=>handlePress(6)}
-      >
-        <Text style={styles.buttonText}>Realign Cones</Text>
-      </Pressable>
-      <Pressable
-        style={styles.buttonContainer}
-        onPressIn={()=>handlePress(1)}
-        onPressOut={handleRelease}
-      >
-        <Text style={styles.buttonText}>Move Forwards</Text>
-      </Pressable>
-      <Pressable
-        style={styles.buttonContainer}
-        onPressIn={()=>handlePress(2)}
-        onPressOut={handleRelease}
-      >
-        <Text style={styles.buttonText}>Turn Left</Text>
-      </Pressable>
-      <Pressable
-        style={styles.buttonContainer}
-        onPressIn={()=>handlePress(3)}
-        onPressOut={handleRelease}
-      >
-        <Text style={styles.buttonText}>Turn Right</Text>
-      </Pressable>
-      <Pressable
-        style={styles.buttonContainer}
-        onPressIn={()=>handlePress(4)}
-        onPressOut={handleRelease}
-      >
-        <Text style={styles.buttonText}>Move Backwards</Text>
-      </Pressable>      
+      <Text style={styles.connectionStatus}>{connectionStatus}</Text>
+      <View style={styles.topRight}>
+        <View style={styles.inputContainer}>
+          <Text style={styles.buttonText}>Cone Separation: </Text>
+          <TextInput
+            style={styles.textInput}
+            onChangeText={setConeSeperation}
+            onSubmitEditing={onSubmitSeperation}
+            value={coneSeperation.toString()}
+            defaultValue="1"
+            keyboardType="numeric"
+          />
+          <Text style={styles.buttonText}>m</Text>
+        </View>
+      </View>
+      <View style={styles.centered}>
+        <Pressable style={styles.realignButton} onPressIn={() => handlePress(6)}>
+          <Text style={styles.buttonText}>Realign Cones</Text>
+          <View style={[styles.dot, { backgroundColor: dotColor }]} />
+        </Pressable>
+        <View style={styles.dPadContainer}>
+          <Pressable
+            style={[styles.buttonContainer, styles.upButton]}
+            onPressIn={() => handlePress(1)}
+            onPressOut={handleRelease}
+          >
+            <Text style={styles.buttonText}>Forward</Text>
+          </Pressable>
+          <View style={styles.middleRow}>
+            <Pressable
+              style={[styles.buttonContainer, styles.leftButton]}
+              onPressIn={() => handlePress(2)}
+              onPressOut={handleRelease}
+            >
+              <Text style={styles.buttonText}>Left</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.buttonContainer, styles.rightButton]}
+              onPressIn={() => handlePress(3)}
+              onPressOut={handleRelease}
+            >
+              <Text style={styles.buttonText}>Right</Text>
+            </Pressable>
+          </View>
+          <Pressable
+            style={[styles.buttonContainer, styles.downButton]}
+            onPressIn={() => handlePress(4)}
+            onPressOut={handleRelease}
+          >
+            <Text style={styles.buttonText}>Back</Text>
+          </Pressable>
+        </View>
+      </View>
       <StatusBar style="auto" />
     </View>
   );
@@ -282,31 +290,122 @@ export default function App() {
 
 
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1c1c1e',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
   },
-  InputContainer: {
+  connectionStatus: {
+    color: '#00ffff',
+    fontSize: 20,
+    fontFamily: 'Courier', 
+    marginBottom: 20,
+    textAlign: 'center',
+    backgroundColor: '#333',
+    padding: 10,
+    borderRadius: 5,
+    width: '90%',
+  },
+  topRight: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+  },
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#89CFF0',
+    backgroundColor: '#444',
     borderRadius: 5,
-    marginHorizontal: 5,
     padding: 10,
+  },
+  textInput: {
+    color: '#00ffff',
+    backgroundColor: '#222',
+    padding: 5,
+    borderRadius: 3,
+    marginHorizontal: 5,
+    textAlign: 'center',
+    width: 40,
+  },
+  centered: {
+    alignItems: 'center',
+  },
+  realignButton: {
+    alignItems: 'center',
+    backgroundColor: '#ff4500',
+    borderRadius: 5,
+    marginBottom: 20,
+    padding: 10,
+    width: 200,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  dPadContainer: {
+    width: 250,
+    height: 250,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#333',
+    borderRadius: 125,
+    padding: 10,
+  },
+  middleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginVertical: 5,
   },
   buttonContainer: {
     alignItems: 'center',
-    backgroundColor: '#841584',
-    borderRadius: 5,
-    marginHorizontal: 5,
-    padding: 10,
+    backgroundColor: '#ff4500',
+    borderRadius: 15,
+    padding: 15,
+    margin: 5,
+    width: 85,
+    height: 85,
+    justifyContent: 'center',
+  },
+  upButton: {
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    marginLeft: -35,
+  },
+  downButton: {
+    position: 'absolute',
+    bottom: 0,
+    left: '50%',
+    marginLeft: -35,
+  },
+  leftButton: {
+    position: 'absolute',
+    left: 0,
+    top: '50%',
+    marginTop: -40,
+  },
+  rightButton: {
+    position: 'absolute',
+    right: 0,
+    top: '50%',
+    marginTop: -40,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 14,
+    textAlign: 'center',
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    position: 'absolute',
+    right: 10,
+    top: 10,
   },
 });

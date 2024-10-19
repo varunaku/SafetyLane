@@ -97,44 +97,70 @@ export default function App() {
   requestPermissions();
 
   const searchAndConnectToDevice = () => {
-    console.log("scan start")
     bleManager.startDeviceScan(null, null, (error, device) => {
       if (error) {
         console.log("errored out");
-        console.log(device);
         console.error(error);
         setConnectionStatus("Error searching for devices");
         return;
       }
-      if (device.name && device.name.includes("SafetyLane")) {
-        console.log("Good device: ", device.name);
-        // Check if the device is already connected to avoid duplicates
-        const alreadyConnected = connectedDevices.some((id) => id === device.id);
-
-        if(!alreadyConnected){
-          //bleManager.stopDeviceScan();
-          setConnectionStatus(`Connecting to device ${connectedDevices.length + 1}...`);
-          connectToDevice(device, connectedDevices.length + 1)
-            .then(() => {
-              console.log(`Connected to device ${connectedDevices.length + 1}`);
-              setConnectionStatus(`Connected to device ${connectedDevices.length + 1}`);
-  
-              // Stop scanning if 2 devices are connected
-              if (connectedDevices.length >= 2) { 
-                console.log("Max connections reached. Stopping scan...");
-                bleManager.stopDeviceScan();
-              }
-            })
-            .catch((err) => {
-              console.log("Error connecting to device:", err);
-            });
+      if(connectedDevices.length < 2){
+        if (device.name && device.name.includes("SafetyLane")) {
+          // Check if the device is already connected to avoid duplicates
+          const alreadyConnected = connectedDevices.some((id) => id === device.id);
+          console.log("Good device: ", device.name);
+          if(!alreadyConnected){
+            setConnectionStatus(`Connecting to device ${connectedDevices.length + 1}...`);
+            connectToDevice(device)
+              .then(() => {
+                
+                setConnectionStatus(`Connected to device ${connectedDevices.length + 1}`);
+                console.log(`Connected to device ${connectedDevices.length + 1}`);
+              })
+              .catch((err) => {
+                console.log("Error connecting to device:", err);
+              });
+          }
         }
       }
       else{
-        console.log("Bad device: ", device.name);
+        console.log("Stopping Device Scan")
+        bleManager.stopDeviceScan();
       }
+      
     });
   };
+
+  const connectToDevice = async (device) => {
+    console.log("connect start");
+    try {
+      const isConnected = await device.isConnected();
+      if (isConnected) {
+        console.log(`Device ${device.id} is already connected.`);
+        return;
+      }
+  
+      const connectedDevice = await device.connect();
+      setConnectedDevices((prevDevices) => [...prevDevices, connectedDevice.id]);
+      console.log("List of connected devices: ", connectedDevices)
+  
+      deviceRefs.current[device.id] = connectedDevice;
+      setConnectionStatus((prevStatus) => ({
+        ...prevStatus,
+        [device.id]: "Connected",
+      }));
+  
+      await connectedDevice.discoverAllServicesAndCharacteristics();
+      //setupDisconnectionListener(connectedDevice.id);
+      return connectedDevice;
+    } catch (error) {
+      console.log("Connection error: ", error);
+      setConnectionStatus((prevStatus) => ({
+        ...prevStatus,
+        [device.id]: "Error in Connection",
+      }));
+    }
+  };  
 
   async function sendData(value) { 
     console.log("new value ====", value);
@@ -188,57 +214,6 @@ export default function App() {
       // }
     }}, [permissions]);
 
-
-  const connectToDevice = (device) => {
-    console.log("connect start")
-    return device
-      .connect()
-      .then((device) => {
-        
-        setConnectedDevices((prevDevices) => [...prevDevices, device.id]);
-        setConnectionStatus((prevStatus) => ({
-          ...prevStatus,
-          [device.id]: "Connected",
-        }));
-
-        deviceRefs.current[device.id] = device;
-        return device.discoverAllServicesAndCharacteristics();
-      })
-      .then((device) => {
-        console.log("connect returning services")
-        setupDisconnectionListener(device.id);
-        return device.services();
-      })
-      // .then((services) => {
-      //   let service = services.find((service) => service.uuid === SERVICE_UUID);
-      //   console.log("connect getting characteristics")
-      //   return service.characteristics();
-      // })
-      // .then((characteristics) => {
-      //   let characteristic = characteristics.find(
-      //     (char) => char.uuid === CHARACTERISTIC_UUID
-      //   );
-      //   console.log("finding data char uuid of", CHARACTERISTIC_UUID)
-      //   setDataCharacteristic(characteristic);
-      //   characteristic.monitor((error, char) => {
-      //     if (error) {
-      //       console.error(error);
-      //       return;
-      //     }
-      //     const rawData = atob(char.value);
-      //     console.log("Received data:", rawData);
-      //   });
-      // })
-      .catch((error) => {
-        console.log("Connection error: ", error);
-        setConnectionStatus((prevStatus) => ({
-          ...prevStatus,
-          [device.id]: "Error in Connection",
-        }));
-      });
-  };
-
-
   // Function to set up a disconnection listener for a specific device
   const setupDisconnectionListener = (deviceID) => {
     const subscription = bleManager.onDeviceDisconnected(deviceID, (error, device) => {
@@ -283,20 +258,20 @@ export default function App() {
   };
 
   // Use Effect to handle the disconnection listeners for each connected device
-  useEffect(() => {
-    connectedDevices.forEach((deviceID) => {
-      setupDisconnectionListener(deviceID);
-    });
+  // useEffect(() => {
+  //   connectedDevices.forEach((deviceID) => {
+  //     setupDisconnectionListener(deviceID);
+  //   });
 
-    // Cleanup all listeners when component unmounts
-    return () => {
-      connectedDevices.forEach((deviceID) => {
-        if (deviceRefs.current[deviceID]) {
-          bleManager.cancelDeviceConnection(deviceID);
-        }
-      });
-    };
-  }, [connectedDevices]);
+  //   // Cleanup all listeners when component unmounts
+  //   return () => {
+  //     connectedDevices.forEach((deviceID) => {
+  //       if (deviceRefs.current[deviceID]) {
+  //         bleManager.cancelDeviceConnection(deviceID);
+  //       }
+  //     });
+  //   };
+  // }, [connectedDevices]);
 
   return (
     <View style={styles.container}>

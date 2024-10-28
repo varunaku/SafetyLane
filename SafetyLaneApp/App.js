@@ -105,15 +105,16 @@ export default function App() {
         return;
       }
       if(connectedDevices.length < 2){
+        //Check for esp 32 devices
         if (device.name && device.name.includes("SafetyLane")) {
           // Check if the device is already connected to avoid duplicates
           const alreadyConnected = connectedDevices.some((id) => id === device.id);
+
           console.log("Good device: ", device.name);
           if(!alreadyConnected){
             setConnectionStatus(`Connecting to device ${connectedDevices.length + 1}...`);
             connectToDevice(device)
               .then(() => {
-                
                 setConnectionStatus(`Connected to device ${connectedDevices.length + 1}`);
                 console.log(`Connected to device ${connectedDevices.length + 1}`);
               })
@@ -141,6 +142,8 @@ export default function App() {
       }
   
       const connectedDevice = await device.connect();
+
+      //Put deviceID into connectedDevices array
       setConnectedDevices((prevDevices) => [...prevDevices, connectedDevice.id]);
       console.log("List of connected devices: ", connectedDevices)
   
@@ -167,6 +170,7 @@ export default function App() {
     try {
       encodedData = btoa(value.toString());
       console.log("Number of connected devices is: ", connectedDevices.length);
+
       // Iterate through connected devices and send data
       const sendPromises = connectedDevices.map((deviceID, index) => {
         const serviceUUID = index === 0 ? SERVICE_UUID : SERVICE_UUID_2;
@@ -184,6 +188,7 @@ export default function App() {
       // Wait for all promises to resolve
       await Promise.all(sendPromises);
       console.log("Data sent to both devices");
+
     } catch (err) {
       console.log("Error: ", err)
     }
@@ -204,7 +209,6 @@ export default function App() {
   }
 
   useEffect(() => {
-    console.log("inside of useeffect")
     if (permissions) {
       console.log("starting the search and connect");
       searchAndConnectToDevice();

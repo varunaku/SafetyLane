@@ -10,19 +10,23 @@ const bleManager = new BleManager();
 
 //TODO: There is a bug where the device attempts to reconnect while already connected, and it detects a duplicate connection but keeps trying to connect anyway. Implement handling for this
 
-const SERVICE_UUID = "137f26d4-af6f-40cd-bccd-1dcf833c71d0";
-const CHARACTERISTIC_UUID = "b06c0815-ebc6-43a3-ac68-025c7dd0ee77";
+const SERVICE_UUID_1 = "137f26d4-af6f-40cd-bccd-1dcf833c71d0";
+const CHARACTERISTIC_UUID_1 = "b06c0815-ebc6-43a3-ac68-025c7dd0ee77";
 
 const SERVICE_UUID_2 = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 const CHARACTERISTIC_UUID_2 = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
+const number_of_cones = 2
+
 
 export default function App() {
 
-  const [connectedDevices, setConnectedDevices] = useState([]); 
+  const [deviceIDs, setDeviceIDs] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState("searching...");
-  const deviceRefs = useRef({});
+  const [connected, setConnected] = useState(false);
 
+
+  const deviceRefs = useRef({});
   const [dataCharacteristics, setDataCharacteristic] = useState([]); 
 
   const [coneSeperation, setConeSeperation] = useState(1);
@@ -97,62 +101,37 @@ export default function App() {
   requestPermissions();
 
   const searchAndConnectToDevice = () => {
-    bleManager.startDeviceScan(null, null, (error, device) => {
-      if (error) {
-        console.log("errored out");
-        console.error(error);
-        setConnectionStatus("Error searching for devices");
-        return;
-      }
-      if(connectedDevices.length < 2){
-        //Check for esp 32 devices
-        if (device.name && device.name.includes("SafetyLane")) {
-          // Check if the device is already connected to avoid duplicates
-          const alreadyConnected = connectedDevices.some((id) => id === device.id);
-
-          console.log("Good device: ", device.name);
-          if(!alreadyConnected){
-            setConnectionStatus(`Connecting to device ${connectedDevices.length + 1}...`);
-            connectToDevice(device)
-              .then(() => {
-                setConnectionStatus(`Connected to device ${connectedDevices.length + 1}`);
-                console.log(`Connected to device ${connectedDevices.length + 1}`);
-              })
-              .catch((err) => {
-                console.log("Error connecting to device:", err);
-              });
-          }
+    for(let i = 1; i < number_of_cones + 1; i++){
+      setConnected(false);
+      bleManager.startDeviceScan(null, null, (error, device) => {
+        if (error) {
+          console.error(error);
+          setConnectionStatus("Error searching for devices");
+          return;
         }
-      }
-      else{
-        console.log("Stopping Device Scan")
-        bleManager.stopDeviceScan();
-      }
-      
-    });
+
+        //Check for esp 32 devices
+        let esp32_name = "SafetyLane_" + i;
+        if (device.name === esp32_name) {
+          bleManager.stopDeviceScan();
+          console.log("Device name is: ", esp32_name);
+          setConnectionStatus(`Connecting...`);
+          connectToDevice(device);
+          setConnected(true);
+        }
+      });
+    }
+    
   };
 
   const connectToDevice = async (device) => {
     console.log("connect start");
     try {
-      const isConnected = await device.isConnected();
-      if (isConnected) {
-        console.log(`Device ${device.id} is already connected.`);
-        return;
-      }
-  
       const connectedDevice = await device.connect();
-
+      console.log("Device Id is: ", connectedDevice.id)
       //Put deviceID into connectedDevices array
-      setConnectedDevices((prevDevices) => [...prevDevices, connectedDevice.id]);
-      console.log("List of connected devices: ", connectedDevices)
-  
-      deviceRefs.current[device.id] = connectedDevice;
-      setConnectionStatus((prevStatus) => ({
-        ...prevStatus,
-        [device.id]: "Connected",
-      }));
-  
+      setDeviceIDs((prevDevices) => [...prevDevices, connectedDevice.id]);
+      console.log("List of connected devices: ", deviceIDs)
       await connectedDevice.discoverAllServicesAndCharacteristics();
       //setupDisconnectionListener(connectedDevice.id);
       return connectedDevice;
@@ -169,12 +148,12 @@ export default function App() {
     console.log("new value ====", value);
     try {
       encodedData = btoa(value.toString());
-      console.log("Number of connected devices is: ", connectedDevices.length);
+      console.log("Number of connected devices is: ", deviceIDs.length);
 
       // Iterate through connected devices and send data
-      const sendPromises = connectedDevices.map((deviceID, index) => {
-        const serviceUUID = index === 0 ? SERVICE_UUID : SERVICE_UUID_2;
-        const characteristicUUID = index === 0 ? CHARACTERISTIC_UUID : CHARACTERISTIC_UUID_2;
+      const sendPromises = deviceIDs.map((deviceID, index) => {
+        const serviceUUID = index === 0 ? SERVICE_UUID_1 : SERVICE_UUID_2;
+        const characteristicUUID = index === 0 ? CHARACTERISTIC_UUID_1 : CHARACTERISTIC_UUID_2;
         console.log("ServiceUUID is:", serviceUUID);
         console.log("CharacteristicUUID is: ", characteristicUUID);
         return bleManager.writeCharacteristicWithResponseForDevice(

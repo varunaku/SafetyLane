@@ -19,7 +19,10 @@ const CHARACTERISTIC_UUID_2 = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 const SERVICE_UUID_3 = "8b2bb238-084b-46da-9d34-bfb02eeca697"
 const CHARACTERISTIC_UUID_3 = "99ebf807-1f5c-4242-ab0d-cda33ecf939b"
 
-const number_of_cones = 3
+const SERVICE_UUID_4 = "dba26dec-3854-4434-8d23-76d8e3334c64"
+const CHARACTERISTIC_UUID_4 = "2b7edb9e-2a2a-41d6-bd93-ad34f8c6cc11"
+
+const number_of_cones = 4
 
 
 export default function App() {
@@ -229,6 +232,10 @@ export default function App() {
           serviceUUID = SERVICE_UUID_3;
           characteristicUUID = CHARACTERISTIC_UUID_3;
         }
+        else if(deviceID === "24:DC:C3:8D:38:6E"){
+          serviceUUID = SERVICE_UUID_4;
+          characteristicUUID = CHARACTERISTIC_UUID_4;
+        }
         console.log("ServiceUUID is:", serviceUUID);
         console.log("CharacteristicUUID is: ", characteristicUUID);
         return bleManager.writeCharacteristicWithResponseForDevice(
@@ -241,7 +248,7 @@ export default function App() {
       
       // Wait for all promises to resolve
       await Promise.all(sendPromises);
-      console.log("Data sent to both devices");
+      console.log("Data sent to all devices");
 
     } catch (err) {
       console.log("Error: ", err)

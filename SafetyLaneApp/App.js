@@ -16,7 +16,10 @@ const CHARACTERISTIC_UUID_1 = "b06c0815-ebc6-43a3-ac68-025c7dd0ee77";
 const SERVICE_UUID_2 = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 const CHARACTERISTIC_UUID_2 = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-const number_of_cones = 2
+const SERVICE_UUID_3 = "8b2bb238-084b-46da-9d34-bfb02eeca697"
+const CHARACTERISTIC_UUID_3 = "99ebf807-1f5c-4242-ab0d-cda33ecf939b"
+
+const number_of_cones = 3
 
 
 export default function App() {
@@ -161,7 +164,7 @@ export default function App() {
         bleManager.stopDeviceScan();
         console.log("Scan timeout. Stopping scan.");
         resolve();
-    }, 20000)); // Adjust timeout duration as needed
+    }, 8000)); // Adjust timeout duration as needed
 
     // Connect to devices sequentially
     const deviceNames = Object.keys(devicesToConnect).sort(); // Sort to connect in order
@@ -220,6 +223,11 @@ export default function App() {
           //safety lane 2
           serviceUUID = SERVICE_UUID_2;
           characteristicUUID = CHARACTERISTIC_UUID_2;
+        }
+        else if(deviceID === "24:DC:C3:82:AE:12"){
+          //safety lane 3
+          serviceUUID = SERVICE_UUID_3;
+          characteristicUUID = CHARACTERISTIC_UUID_3;
         }
         console.log("ServiceUUID is:", serviceUUID);
         console.log("CharacteristicUUID is: ", characteristicUUID);

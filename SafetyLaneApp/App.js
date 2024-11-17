@@ -16,7 +16,7 @@ const CHARACTERISTIC_UUID_1 = "b06c0815-ebc6-43a3-ac68-025c7dd0ee77";
 const SERVICE_UUID_2 = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 const CHARACTERISTIC_UUID_2 = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-const number_of_cones = 1
+const number_of_cones = 2
 
 
 export default function App() {
@@ -25,7 +25,7 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState("searching...");
   //const [connected, setConnected] = useState(false);
 
-
+  const [connectedDeviceNames, setConnectedDeviceNames] = useState([])
   //const deviceRefs = useRef({});
   const [dataCharacteristics, setDataCharacteristic] = useState([]); 
 
@@ -100,29 +100,85 @@ export default function App() {
   requestLocationPermission();
   requestBluetoothPermissions();
 
-  const searchAndConnectToDevice = () => {
-    for(let i = 1; i < number_of_cones + 1; i++){
-      //setConnected(false);
-      bleManager.startDeviceScan(null, null, (error, device) => {
+  // const searchAndConnectToDevice = () => {
+  //   for(let i = 1; i < number_of_cones + 1; i++){
+  //     //setConnected(false);
+  //     bleManager.startDeviceScan(null, null, (error, device) => {
+  //       if (error) {
+  //         console.error(error);
+  //         setConnectionStatus("Error searching for devices");
+  //         return;
+  //       }
+
+  //       //Check for esp 32 devices
+  //       let esp32_name = "SafetyLane_" + i;
+  //       //console.log("Device.name is: ", device.name);
+  //       if (device.name === esp32_name) {
+  //         bleManager.stopDeviceScan();
+  //         console.log("Esp32_name is: ", esp32_name);
+  //         setConnectionStatus(`Connecting...`);
+  //         connectToDevice(device);
+  //         //setConnected(true);
+  //       }
+  //     });
+  //   }
+    
+  // };
+
+  const searchAndConnectToDevice = async () => {
+    const devicesToConnect = {};
+    let foundDevices = 0;
+
+    // Start scanning for devices
+    console.log("Starting BLE device scan...");
+    bleManager.startDeviceScan(null, null, (error, device) => {
         if (error) {
-          console.error(error);
-          setConnectionStatus("Error searching for devices");
-          return;
+            console.error("Error during device scan:", error);
+            setConnectionStatus("Error searching for devices");
+            return;
         }
 
-        //Check for esp 32 devices
-        let esp32_name = "SafetyLane_" + i;
-        //console.log("Device.name is: ", device.name);
-        if (device.name === esp32_name) {
-          bleManager.stopDeviceScan();
-          console.log("Esp32_name is: ", esp32_name);
-          setConnectionStatus(`Connecting...`);
-          connectToDevice(device);
-          //setConnected(true);
+        // Check for devices matching expected naming pattern
+        if (device.name && device.name.startsWith("SafetyLane_") && !connectedDeviceNames.includes(device.name)) {
+            console.log("Discovered device:", device.name, device.id);
+
+            // Add device to connection queue if not already added
+            if (!devicesToConnect[device.name]) {
+                devicesToConnect[device.name] = device;
+                foundDevices++;
+
+                // Stop scanning when all expected devices are discovered
+                if (foundDevices === number_of_cones) {
+                    console.log("All expected devices discovered. Stopping scan.");
+                    bleManager.stopDeviceScan();
+                }
+            }
         }
-      });
+    });
+
+    // Wait for the scan to finish or timeout
+    await new Promise((resolve) => setTimeout(() => {
+        bleManager.stopDeviceScan();
+        console.log("Scan timeout. Stopping scan.");
+        resolve();
+    }, 20000)); // Adjust timeout duration as needed
+
+    // Connect to devices sequentially
+    const deviceNames = Object.keys(devicesToConnect).sort(); // Sort to connect in order
+    for (const deviceName of deviceNames) {
+        const device = devicesToConnect[deviceName];
+        console.log(`Connecting to device: ${deviceName}`);
+
+        try {
+            const connectedDevice = await connectToDevice(device);
+            setConnectedDeviceNames((prevDevices) => [...prevDevices, connectedDevice.name]);
+            console.log(`${connectedDevice.name} connected.`);
+        } catch (error) {
+            console.error(`Failed to connect to ${deviceName}:`, error);
+        }
     }
-    
+
+    console.log("Device connection process completed.");
   };
 
   const connectToDevice = async (device) => {
@@ -156,10 +212,12 @@ export default function App() {
         let characteristicUUID;
         console.log("Device Id is: ", deviceID)
         if(deviceID === "24:DC:C3:82:9C:86"){
+          //safetyLane 1
           serviceUUID = SERVICE_UUID_1;
           characteristicUUID = CHARACTERISTIC_UUID_1;
         }
         else if(deviceID === "24:DC:C3:82:80:BE"){
+          //safety lane 2
           serviceUUID = SERVICE_UUID_2;
           characteristicUUID = CHARACTERISTIC_UUID_2;
         }
@@ -199,11 +257,21 @@ export default function App() {
   useEffect(() => {
     if (permissions) {
       console.log("starting the search and connect");
-      searchAndConnectToDevice();
+      //searchAndConnectToDevice();
       // while (connectionStatus == "Error searching for devices") {
       //   console.log("inside while, second run")
       //   searchAndConnectToDevice();
       // }
+      const startConnectionProcess = async () => {
+        try {
+            await searchAndConnectToDevice();
+            console.log("All devices connected successfully.");
+        } catch (error) {
+            console.error("Error during the device connection process:", error);
+        }
+      };
+
+      startConnectionProcess(); // Call the async function
     }}, [permissions]);
 
   // Function to set up a disconnection listener for a specific device

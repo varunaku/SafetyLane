@@ -16,17 +16,17 @@ const CHARACTERISTIC_UUID_1 = "b06c0815-ebc6-43a3-ac68-025c7dd0ee77";
 const SERVICE_UUID_2 = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 const CHARACTERISTIC_UUID_2 = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-const number_of_cones = 2
+const number_of_cones = 1
 
 
 export default function App() {
 
   const [deviceIDs, setDeviceIDs] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState("searching...");
-  const [connected, setConnected] = useState(false);
+  //const [connected, setConnected] = useState(false);
 
 
-  const deviceRefs = useRef({});
+  //const deviceRefs = useRef({});
   const [dataCharacteristics, setDataCharacteristic] = useState([]); 
 
   const [coneSeperation, setConeSeperation] = useState(1);
@@ -56,7 +56,7 @@ export default function App() {
     }
   }
   
-  async function requestPermissions() {
+  async function requestBluetoothPermissions() {
     try {
       const grantedStatus1 = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -98,11 +98,11 @@ export default function App() {
   }
   
   requestLocationPermission();
-  requestPermissions();
+  requestBluetoothPermissions();
 
   const searchAndConnectToDevice = () => {
     for(let i = 1; i < number_of_cones + 1; i++){
-      setConnected(false);
+      //setConnected(false);
       bleManager.startDeviceScan(null, null, (error, device) => {
         if (error) {
           console.error(error);
@@ -112,12 +112,13 @@ export default function App() {
 
         //Check for esp 32 devices
         let esp32_name = "SafetyLane_" + i;
+        //console.log("Device.name is: ", device.name);
         if (device.name === esp32_name) {
           bleManager.stopDeviceScan();
-          console.log("Device name is: ", esp32_name);
+          console.log("Esp32_name is: ", esp32_name);
           setConnectionStatus(`Connecting...`);
           connectToDevice(device);
-          setConnected(true);
+          //setConnected(true);
         }
       });
     }
@@ -129,18 +130,16 @@ export default function App() {
     try {
       const connectedDevice = await device.connect();
       console.log("Device Id is: ", connectedDevice.id)
+
       //Put deviceID into connectedDevices array
       setDeviceIDs((prevDevices) => [...prevDevices, connectedDevice.id]);
       console.log("List of connected devices: ", deviceIDs)
       await connectedDevice.discoverAllServicesAndCharacteristics();
-      //setupDisconnectionListener(connectedDevice.id);
+
       return connectedDevice;
     } catch (error) {
       console.log("Connection error: ", error);
-      setConnectionStatus((prevStatus) => ({
-        ...prevStatus,
-        [device.id]: "Error in Connection",
-      }));
+      setConnectionStatus("Error in Connection");
     }
   };  
 
@@ -149,11 +148,21 @@ export default function App() {
     try {
       encodedData = btoa(value.toString());
       console.log("Number of connected devices is: ", deviceIDs.length);
-
+      console.log("Device ID's are: ", deviceIDs);
+      
       // Iterate through connected devices and send data
       const sendPromises = deviceIDs.map((deviceID, index) => {
-        const serviceUUID = index === 0 ? SERVICE_UUID_1 : SERVICE_UUID_2;
-        const characteristicUUID = index === 0 ? CHARACTERISTIC_UUID_1 : CHARACTERISTIC_UUID_2;
+        let serviceUUID;
+        let characteristicUUID;
+        console.log("Device Id is: ", deviceID)
+        if(deviceID === "24:DC:C3:82:9C:86"){
+          serviceUUID = SERVICE_UUID_1;
+          characteristicUUID = CHARACTERISTIC_UUID_1;
+        }
+        else if(deviceID === "24:DC:C3:82:80:BE"){
+          serviceUUID = SERVICE_UUID_2;
+          characteristicUUID = CHARACTERISTIC_UUID_2;
+        }
         console.log("ServiceUUID is:", serviceUUID);
         console.log("CharacteristicUUID is: ", characteristicUUID);
         return bleManager.writeCharacteristicWithResponseForDevice(
@@ -198,47 +207,47 @@ export default function App() {
     }}, [permissions]);
 
   // Function to set up a disconnection listener for a specific device
-  const setupDisconnectionListener = (deviceID) => {
-    const subscription = bleManager.onDeviceDisconnected(deviceID, (error, device) => {
-      if (error) {
-        console.log(`Device ${deviceID} disconnected with error:`, error);
-      } else {
-        console.log(`Device ${deviceID} disconnected.`);
-      }
+  // const setupDisconnectionListener = (deviceID) => {
+  //   const subscription = bleManager.onDeviceDisconnected(deviceID, (error, device) => {
+  //     if (error) {
+  //       console.log(`Device ${deviceID} disconnected with error:`, error);
+  //     } else {
+  //       console.log(`Device ${deviceID} disconnected.`);
+  //     }
 
-      // Update the connection status
-      setConnectionStatus((prevStatus) => ({
-        ...prevStatus,
-        [deviceID]: "Disconnected",
-      }));
+  //     // Update the connection status
+  //     setConnectionStatus((prevStatus) => ({
+  //       ...prevStatus,
+  //       [deviceID]: "Disconnected",
+  //     }));
 
-      // Attempt to reconnect the device
-      if (deviceRefs.current[deviceID]) {
-        setConnectionStatus((prevStatus) => ({
-          ...prevStatus,
-          [deviceID]: "Reconnecting...",
-        }));
+  //     // Attempt to reconnect the device
+  //     if (deviceRefs.current[deviceID]) {
+  //       setConnectionStatus((prevStatus) => ({
+  //         ...prevStatus,
+  //         [deviceID]: "Reconnecting...",
+  //       }));
 
-        connectToDevice(deviceRefs.current[deviceID])
-          .then(() => {
-            setConnectionStatus((prevStatus) => ({
-              ...prevStatus,
-              [deviceID]: "Connected",
-            }));
-          })
-          .catch((error) => {
-            console.log(`Reconnection failed for device ${deviceID}: `, error);
-            setConnectionStatus((prevStatus) => ({
-              ...prevStatus,
-              [deviceID]: "Reconnection failed",
-            }));
-          });
-      }
-    });
+  //       connectToDevice(deviceRefs.current[deviceID])
+  //         .then(() => {
+  //           setConnectionStatus((prevStatus) => ({
+  //             ...prevStatus,
+  //             [deviceID]: "Connected",
+  //           }));
+  //         })
+  //         .catch((error) => {
+  //           console.log(`Reconnection failed for device ${deviceID}: `, error);
+  //           setConnectionStatus((prevStatus) => ({
+  //             ...prevStatus,
+  //             [deviceID]: "Reconnection failed",
+  //           }));
+  //         });
+  //     }
+  //   });
 
-    // Clean up listener on unmount or when device is removed from connected devices
-    return () => subscription.remove();
-  };
+  //   // Clean up listener on unmount or when device is removed from connected devices
+  //   return () => subscription.remove();
+  // };
 
   // Use Effect to handle the disconnection listeners for each connected device
   // useEffect(() => {

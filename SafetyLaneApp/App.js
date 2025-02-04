@@ -22,7 +22,7 @@ const CHARACTERISTIC_UUID_3 = "99ebf807-1f5c-4242-ab0d-cda33ecf939b"
 const SERVICE_UUID_4 = "dba26dec-3854-4434-8d23-76d8e3334c64"
 const CHARACTERISTIC_UUID_4 = "2b7edb9e-2a2a-41d6-bd93-ad34f8c6cc11"
 
-const number_of_cones = 4
+const number_of_cones = 2
 
 
 export default function App() {
@@ -145,6 +145,7 @@ export default function App() {
         }
 
         // Check for devices matching expected naming pattern
+        //console.log("Device name: ", device.name);
         if (device.name && device.name.startsWith("SafetyLane_") && !connectedDeviceNames.includes(device.name)) {
             console.log("Discovered device:", device.name, device.id);
 
@@ -222,16 +223,37 @@ export default function App() {
           serviceUUID = SERVICE_UUID_1;
           characteristicUUID = CHARACTERISTIC_UUID_1;
         }
+
+        else if(deviceID === "3C:E9:0E:72:2B:4A"){
+          //safetyLane 1 new esp32
+          serviceUUID = SERVICE_UUID_1;
+          characteristicUUID = CHARACTERISTIC_UUID_1;
+        }
+
         else if(deviceID === "24:DC:C3:82:80:BE"){
           //safety lane 2
           serviceUUID = SERVICE_UUID_2;
           characteristicUUID = CHARACTERISTIC_UUID_2;
         }
+
+        else if(deviceID === "3C:E9:0E:72:2B:42"){
+          //safety lane 2 new esp32
+          serviceUUID = SERVICE_UUID_2;
+          characteristicUUID = CHARACTERISTIC_UUID_2;
+        }
+
         else if(deviceID === "24:DC:C3:82:AE:12"){
           //safety lane 3
           serviceUUID = SERVICE_UUID_3;
           characteristicUUID = CHARACTERISTIC_UUID_3;
         }
+
+        else if(deviceID === "3C:E9:0E:72:32:4A"){
+          //safety lane 3 new esp32
+          serviceUUID = SERVICE_UUID_3;
+          characteristicUUID = CHARACTERISTIC_UUID_3;
+        }
+
         else if(deviceID === "24:DC:C3:8D:38:6E"){
           serviceUUID = SERVICE_UUID_4;
           characteristicUUID = CHARACTERISTIC_UUID_4;

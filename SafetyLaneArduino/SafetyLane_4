@@ -12,8 +12,8 @@
 
 ESP32MotorControl motors = ESP32MotorControl();
 
-#define SERVICE_UUID "137f26d4-af6f-40cd-bccd-1dcf833c71d0"
-#define CHARACTERISTIC_UUID "b06c0815-ebc6-43a3-ac68-025c7dd0ee77"
+#define SERVICE_UUID "dba26dec-3854-4434-8d23-76d8e3334c64"
+#define CHARACTERISTIC_UUID "2b7edb9e-2a2a-41d6-bd93-ad34f8c6cc11"
 
 BLECharacteristic *pDataCharacteristic;
 String distance = "0";
@@ -95,7 +95,7 @@ void setup() {
   motors.attachMotors(M1_FWD_PIN, M1_RVS_PIN, M2_FWD_PIN, M2_RVS_PIN);
 
   // Create BLE device, server, and service
-  BLEDevice::init("SafetyLaneApp");
+  BLEDevice::init("SafetyLane_4");
 
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -144,4 +144,3 @@ void loop() {
 
   delay(500);
 }
-

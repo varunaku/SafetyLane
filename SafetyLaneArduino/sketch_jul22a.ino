@@ -5,10 +5,10 @@
 #include <BLE2902.h>
 #include "ESP32MotorControl.h"
 
-#define M1_FWD_PIN D2
-#define M1_RVS_PIN D3
-#define M2_FWD_PIN D4
-#define M2_RVS_PIN D5
+#define M1_FWD_PIN 12
+#define M1_RVS_PIN 13
+#define M2_FWD_PIN 14
+#define M2_RVS_PIN 15
 
 ESP32MotorControl motors = ESP32MotorControl();
 

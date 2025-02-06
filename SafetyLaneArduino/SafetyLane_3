@@ -17,6 +17,7 @@ ESP32MotorControl motors = ESP32MotorControl();
 
 BLECharacteristic *pDataCharacteristic;
 String distance = "0";
+unsigned long startTime;
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -126,11 +127,22 @@ void loop() {
     set_motor(motors, 100, -100);
   }
   if (distance == "2") {
-  Serial.println("lft");
+    //Implement delay
+    delay(5000);
+    //Move straight for a bit so the 3rd robot is approximately in the same position as the 2nd one was previously
+    startTime = millis();  // Record the start time
+    // Keep executing the instruction while 2 seconds haven't passed
+    while (millis() - startTime < 4000) {  // 2000 ms = 2 seconds
+      set_motor(motors, 100, -100);
+    }
+    
+
+    Serial.println("lft");
     set_motor(motors, 0, -100);
   }
   if (distance == "3") {
-  Serial.println("rt");
+    delay(5000);
+    Serial.println("rt");
     set_motor(motors, 100, 0);
   }
   if (distance == "4") {

@@ -250,13 +250,18 @@ export default function App() {
 
         else if(deviceID === "3C:E9:0E:72:32:4A"){
           //safety lane 3 new esp32
-          serviceUUID = SERVICE_UUID_3;
-          characteristicUUID = CHARACTERISTIC_UUID_3;
+          serviceUUID = SERVICE_UUID_1;
+          characteristicUUID = CHARACTERISTIC_UUID_1;
         }
 
         else if(deviceID === "24:DC:C3:8D:38:6E"){
           serviceUUID = SERVICE_UUID_4;
           characteristicUUID = CHARACTERISTIC_UUID_4;
+        }        
+        else if(deviceID === "08:3A:8D:96:73:56"){
+          //new device 4 
+          serviceUUID = SERVICE_UUID_2;
+          characteristicUUID = CHARACTERISTIC_UUID_2;
         }
         console.log("ServiceUUID is:", serviceUUID);
         console.log("CharacteristicUUID is: ", characteristicUUID);

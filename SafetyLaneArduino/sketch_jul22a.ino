@@ -95,7 +95,7 @@ void setup() {
   motors.attachMotors(M1_FWD_PIN, M1_RVS_PIN, M2_FWD_PIN, M2_RVS_PIN);
 
   // Create BLE device, server, and service
-  BLEDevice::init("SafetyLaneApp");
+  BLEDevice::init("SafetyLane_1");
 
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());

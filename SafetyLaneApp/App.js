@@ -13,22 +13,26 @@ const bleManager = new BleManager();
 const SERVICE_UUID_1 = "137f26d4-af6f-40cd-bccd-1dcf833c71d0";
 const CHARACTERISTIC_UUID_1 = "b06c0815-ebc6-43a3-ac68-025c7dd0ee77";
 const deviceId_oldesp32_1 = "24:DC:C3:82:9C:86";
-const deviceId_newesp32_1 = "3C:E9:0E:72:2B:4A";
+const deviceId_newesp32_1 = "3C:E9:0E:72:2B:4AB"; //might've cause issues with testing so i commented, uncomment if needed
 
 const SERVICE_UUID_2 = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 const CHARACTERISTIC_UUID_2 = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 const deviceId_oldesp32_2 = "24:DC:C3:82:80:BE";
-const deviceId_newesp32_2 = "3C:E9:0E:72:2B:42";
+// const deviceId_newesp32_2 = "3C:E9:0E:72:2B:42"; //caused issues with testing so i commented, uncomment if needed
+const deviceId_newesp32_2 = ""; //same as above, added because of testing issues, delete if needed
 
 const SERVICE_UUID_3 = "8b2bb238-084b-46da-9d34-bfb02eeca697"
 const CHARACTERISTIC_UUID_3 = "99ebf807-1f5c-4242-ab0d-cda33ecf939b"
 const deviceId_oldesp32_3 = "24:DC:C3:82:AE:12";
-const deviceId_newesp32_3 = "3C:E9:0E:72:32:4A";
+// const deviceId_newesp32_3 = "3C:E9:0E:72:32:4A"; //might've cause issues with testing so i commented, uncomment if needed
+const deviceId_newesp32_3 = "3C:E9:0E:72:2B:42";
 
 const SERVICE_UUID_4 = "dba26dec-3854-4434-8d23-76d8e3334c64"
 const CHARACTERISTIC_UUID_4 = "2b7edb9e-2a2a-41d6-bd93-ad34f8c6cc11"
 const deviceId_oldesp32_4 = "24:DC:C3:8D:38:6E";
-//const deviceId_newesp32_4 = "3C:E9:0E:72:32:4A";
+const deviceId_newesp32_4 = "3C:E9:0E:72:2B:4A";
+// const deviceId_newesp32_4 = "3C:E9:0E:72:32:4A"
+// const stepData_UUID = "2b7edb9e-2a2a-41d6-bd93-ad34f8c6cc11";
 
 let device_number = 0;
 let all_devices = 1;
@@ -37,14 +41,15 @@ let single_robot_sending_device_2 = 0;
 let single_robot_sending_device_3 = 0;
 
 //Change these variables before starting app
-const number_of_cones = 2
+const number_of_cones = 2;
 
 
 export default function App() {
 
   const [deviceIDs, setDeviceIDs] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState("searching...");
-  //const [connected, setConnected] = useState(false);
+  const [stepDataChar, setStepDataChar] = useState(null);
+    //const [connected, setConnected] = useState(false);
 
   const [connectedDeviceNames, setConnectedDeviceNames] = useState([])
   //const deviceRefs = useRef({});
@@ -202,6 +207,30 @@ export default function App() {
             console.error(`Failed to connect to ${deviceName}:`, error);
         }
     }
+    console.log("trying to add monitoring");
+    console.log(deviceNames);
+    if (deviceNames.includes("SafetyLane_4")) {
+      console.log("in dnames");
+      let d4 = devicesToConnect["SafetyLane_4"];
+      // console.log("d41=2: ", d4);
+      let services = await d4.services();
+      let service = services.find((service) => service.uuid === SERVICE_UUID_4);
+      let characteristics = await service.characteristics();
+      let stepDataCharacteristic = characteristics.find(
+        (char) => char.uuid === CHARACTERISTIC_UUID_4
+      );
+      console.log("finding step data char uuid of", CHARACTERISTIC_UUID_4)
+      setStepDataChar(stepDataCharacteristic);
+      stepDataCharacteristic.monitor((error, char) => {//monitor is what lets us recieve information from the board
+        if (error) {
+          console.error(error);
+          return;
+        }
+        const rawData = atob(char.value);
+        console.log("Received data:", rawData);
+        // setDistance(rawData);
+      });
+    };
 
     console.log("Device connection process completed.");
   };
@@ -306,8 +335,8 @@ export default function App() {
           else if(deviceID === deviceId_newesp32_3){
             //safety lane 3 new esp32
             device_number = 3;
-            serviceUUID = SERVICE_UUID_4;
-            characteristicUUID = CHARACTERISTIC_UUID_4;
+            serviceUUID = SERVICE_UUID_3;
+            characteristicUUID = CHARACTERISTIC_UUID_3;
           }
 
           else if(deviceID === deviceId_oldesp32_4){
@@ -316,11 +345,11 @@ export default function App() {
             serviceUUID = SERVICE_UUID_4;
             characteristicUUID = CHARACTERISTIC_UUID_4;
           }
-          // else if(deviceID === deviceId_newesp32_4){
-          //   device_number = 4;
-          //   serviceUUID = SERVICE_UUID_4;
-          //   characteristicUUID = CHARACTERISTIC_UUID_4;
-          // }
+          else if(deviceID === deviceId_newesp32_4){
+            device_number = 4;
+            serviceUUID = SERVICE_UUID_4;
+            characteristicUUID = CHARACTERISTIC_UUID_4;
+          }
           console.log("Device Id is: ", deviceID)
           console.log("ServiceUUID is:", serviceUUID);
           console.log("CharacteristicUUID is: ", characteristicUUID);
@@ -330,7 +359,7 @@ export default function App() {
             serviceUUID,
             characteristicUUID,
             encodedData
-          );
+          )
         });
         
         // Wait for all promises to resolve

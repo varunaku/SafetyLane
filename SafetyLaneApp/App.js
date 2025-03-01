@@ -19,7 +19,7 @@ const SERVICE_UUID_2 = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 const CHARACTERISTIC_UUID_2 = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 const deviceId_oldesp32_2 = "24:DC:C3:82:80:BE";
 // const deviceId_newesp32_2 = "3C:E9:0E:72:2B:42"; //caused issues with testing so i commented, uncomment if needed
-const deviceId_newesp32_2 = ""; //same as above, added because of testing issues, delete if needed
+const deviceId_newesp32_2 = "08:3A:8D:96:73:56"; //same as above, added because of testing issues, delete if needed
 
 const SERVICE_UUID_3 = "8b2bb238-084b-46da-9d34-bfb02eeca697"
 const CHARACTERISTIC_UUID_3 = "99ebf807-1f5c-4242-ab0d-cda33ecf939b"
@@ -49,6 +49,8 @@ export default function App() {
   const [deviceIDs, setDeviceIDs] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState("searching...");
   const [stepDataChar, setStepDataChar] = useState(null);
+  const [stepDataChar2, setStepDataChar2] = useState(null);
+  const [stepDataChar3, setStepDataChar3] = useState(null);
     //const [connected, setConnected] = useState(false);
 
   const [connectedDeviceNames, setConnectedDeviceNames] = useState([])
@@ -210,6 +212,53 @@ export default function App() {
     }
     console.log("trying to add monitoring");
     console.log(deviceNames);
+
+    //TODO: the following code is horrific, maybe clean it up later
+
+    // if (deviceNames.includes("SafetyLane_2")) {
+    //   console.log("in dnames");
+    //   let d2 = devicesToConnect["SafetyLane_2"];
+    //   // console.log("d41=2: ", d4);
+    //   let services = await d2.services();
+    //   let service = services.find((service) => service.uuid === SERVICE_UUID_2);
+    //   let characteristics = await service.characteristics();
+    //   let stepDataCharacteristic = characteristics.find(
+    //     (char) => char.uuid === CHARACTERISTIC_UUID_2
+    //   );
+    //   console.log("finding step data char uuid of", CHARACTERISTIC_UUID_2)
+    //   setStepDataChar2(stepDataCharacteristic);
+    //   stepDataCharacteristic.monitor((error, char) => {//monitor is what lets us recieve information from the board
+    //     if (error) {
+    //       console.error(error);
+    //       return;
+    //     }
+    //     const rawData = atob(char.value);
+    //     console.log("Received board 2 data:", rawData);
+    //     // addData(rawData);
+    //   });
+    // };
+    if (deviceNames.includes("SafetyLane_3")) {
+      console.log("in dnames");
+      let d3 = devicesToConnect["SafetyLane_3"];
+      // console.log("d41=2: ", d4);
+      let services = await d3.services();
+      let service = services.find((service) => service.uuid === SERVICE_UUID_3);
+      let characteristics = await service.characteristics();
+      let stepDataCharacteristic3 = characteristics.find(
+        (char) => char.uuid === CHARACTERISTIC_UUID_3
+      );
+      console.log("finding step data char uuid of", CHARACTERISTIC_UUID_3)
+      setStepDataChar3(stepDataCharacteristic3);
+      stepDataCharacteristic3.monitor((error, char) => {//monitor is what lets us recieve information from the board
+        if (error) {
+          console.error(error);
+          return;
+        }
+        const rawData = atob(char.value);
+        console.log("Received board 3 data:", rawData);
+        // addData(rawData);
+      });
+    };
     if (deviceNames.includes("SafetyLane_4")) {
       console.log("in dnames");
       let d4 = devicesToConnect["SafetyLane_4"];
@@ -228,8 +277,8 @@ export default function App() {
           return;
         }
         const rawData = atob(char.value);
-        console.log("Received data:", rawData);
-        addData(rawData);
+        console.log("Received board 4 data:", rawData);
+        // addData(rawData);
       });
     };
 
@@ -322,8 +371,8 @@ export default function App() {
           else if(deviceID === deviceId_newesp32_2){
             //safety lane 2 new esp32
             device_number = 2;
-            serviceUUID = SERVICE_UUID_3;
-            characteristicUUID = CHARACTERISTIC_UUID_3;
+            serviceUUID = SERVICE_UUID_2;
+            characteristicUUID = CHARACTERISTIC_UUID_2;
           }
 
           else if(deviceID === deviceId_oldesp32_3){
@@ -522,13 +571,16 @@ export default function App() {
       if (distances.length >= 5) { //add condiiton for compass check
         //calculation
 
-        const sortedArr = distances.sort((a,b) => a - b);
+        const sortedDist = distances.sort((a,b) => a - b);
+        const sortedHead = headings.sort((a,b) => a - b);
         console.log("printing distances =========");
         for (let i = 0; i < 5; i++ ) {
-          console.log("i=",i, "| d=", sortedArr[i]);
+          console.log("i=",i, "| d=", sortedDist[i]);
         }
-        console.log("selected median as ", sortedArr[2])
-
+        console.log("selected median as ", sortedDist[2])
+        console.log("selected median as ", sortedHead[2])
+        //how are we gonna error correct?
+        //hard code a couple groups, ex: within 30deg of leader, within 90, within 180, then run a hardcoded case 
     
 
       } 

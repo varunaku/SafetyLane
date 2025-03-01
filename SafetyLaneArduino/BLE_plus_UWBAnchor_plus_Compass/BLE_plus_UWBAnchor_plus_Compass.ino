@@ -9,7 +9,6 @@
 #include "DW1000.h"
 #include <Adafruit_MMC56x3.h>
 #include <string>
-// using namespace std;
 
 // leftmost two bytes below will become the "short address"
 char anchor_addr[] = "84:00:5B:D5:A9:9A:E2:9C"; //#4
@@ -67,6 +66,7 @@ ESP32MotorControl motors = ESP32MotorControl();
 BLECharacteristic *pDataCharacteristic;
 String distance = "0";
 float uwb_dist = 0; 
+float compass_heading = 0;
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -131,7 +131,8 @@ class CharacteristicsCallbacks : public BLECharacteristicCallbacks
     {
       //TODO check whether the code below sends data, or the modified motor1 code
       distance = pCharacteristic->getValue().c_str();
-      String temp = String(uwb_dist, 2);
+      compass_heading = get_compass_heading();
+      String temp = String(uwb_dist, 2) + "," + String(compass_heading, 3);;
       Serial.print("String rep: ");
       Serial.println(temp);
       pDataCharacteristic->setValue(const_cast<char *>(temp.c_str()));
@@ -172,14 +173,14 @@ float get_compass_heading(){
   float heading_uncorrected = (atan2(mag_data[0],mag_data[1]) * 180) / Pi;
 
   // Normalize to 0-360
-  if (heading < 0)
+  if (heading < 0)  
   {
     heading = 360 + heading;
   }
-  Serial.print("Compass Heading: ");
-  Serial.println(heading);
-  Serial.print("Uncorrected Compass Heading: ");
-  Serial.println(heading_uncorrected);
+  // Serial.print("Compass Heading: ");
+  // Serial.println(heading);
+  // Serial.print("Uncorrected Compass Heading: ");
+  // Serial.println(heading_uncorrected);
   delay(500);
 
   return heading;
@@ -221,11 +222,11 @@ void setup() {
   //Compass init
   Serial.println("Adafruit_MMC5603 Magnetometer Compass");
   Serial.println("");
-  // if (!mag.begin(MMC56X3_DEFAULT_ADDRESS, &Wire)) {  // I2C mode
-  //   /* There was a problem detecting the MMC5603 ... check your connections */
-  //   Serial.println("Ooops, no MMC5603 detected ... Check your wiring!");
-  //   while (1) delay(10);
-  // }
+  if (!mag.begin(MMC56X3_DEFAULT_ADDRESS, &Wire)) {  // I2C mode
+    /* There was a problem detecting the MMC5603 ... check your connections */
+    Serial.println("Ooops, no MMC5603 detected ... Check your wiring!");
+    while (1) delay(10);
+  }
 
   // Create BLE device, server, and service
   BLEDevice::init("SafetyLane_4");
@@ -254,26 +255,14 @@ void setup() {
 void loop() {
 
     DW1000Ranging.loop();
-    // float compass_heading = get_compass_heading();
-
+    // if (increment % 10 == 0) {
+    //   compass_heading = get_compass_heading();
+    // }
     // Serial.println("command = ");
     // Serial.println(distance);
     if (distance == "1") {//TODO:: move the data sending code elsewhere, restore motor functionality
-      //TODO check whether the code below sends data, or the modified onWrite
-      // pDataCharacteristic->setValue(const_cast<char *>(std::to_string(uwb_dist).c_str()));
-      // pDataCharacteristic->notify();
-      // Serial.print("sending the following: ");
-      // Serial.println(uwb_dist);
-      delay(500);
-      String temp2 = String(uwb_dist, 2);
-      Serial.print("2String rep: ");
-      Serial.println(temp2);
-      pDataCharacteristic->setValue(const_cast<char *>(temp2.c_str()));
-      // Serial.print("2Value Written before send ");
-      Serial.println("2Value Written before send: " + pDataCharacteristic->getValue());
-      pDataCharacteristic->notify();
-    // Serial.println("fwd");
-    //   set_motor(motors, 100, -100);
+      Serial.println("fwd");
+      set_motor(motors, 100, -100);
     }
     if (distance == "2") {
     Serial.println("lft");
@@ -291,6 +280,7 @@ void loop() {
       // Serial.println("stop");
       set_motor(motors, 0, 0);
     }
+    increment++;
 }
 
 void newRange()

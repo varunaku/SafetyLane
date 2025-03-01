@@ -56,14 +56,15 @@ export default function App() {
   const [dataCharacteristics, setDataCharacteristic] = useState([]); 
 
   const [coneSeperation, setConeSeperation] = useState(1);
-  // const [distance, setDistance] = useState(0); //Distance is used as a dummy variable for data received by esp32. Uncomment this and write characteristic data inside the arduino code to restore this functionality, examine previous commits if confusing
+  const [distances, setDistances] = useState([]); //repurposed for receiving data from esp
+  const [headings, setHeadings] = useState([]); //repurposed for receiving data from esp
   const [permissions, setPermissions] = useState(false);
   const [dotColor, setDotColor] = useState("transparent");
 
   const [isDropdownVisible, setDropdownVisible] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [singleConeMode, setSingleConeMode] = useState(false);
-
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   const handleSelect = (value) => {
     setSelectedDevice(value);
@@ -228,7 +229,7 @@ export default function App() {
         }
         const rawData = atob(char.value);
         console.log("Received data:", rawData);
-        // setDistance(rawData);
+        addData(rawData);
       });
     };
 
@@ -446,6 +447,45 @@ export default function App() {
     console.log("pressable Pressed Down ", value);
     sendData(value);
   };
+  function addData(val) {
+    // "given string "0.31,51.123" split into 2 
+    const values = val.split(",");
+    const dist_val = values[0];
+    const head_val = values[1]
+    setDistances((prev) => {
+      console.log("running addDistance: ", prev, " vs ", dist_val)
+      if (prev.length < 5) {
+        return [...prev, dist_val];
+      }
+      return prev;
+    })
+    setHeadings((prev) => {
+      console.log("running addDistance: ", prev, " vs ", head_val)
+      if (prev.length < 5) {
+        return [...prev, head_val];
+      }
+      return prev;
+    })
+  };
+  async function handleRealign(value) {
+    console.log("realign Pressed Down ", value);
+    setDistances([]); //init to empty array
+    setHeadings([]); //init to empty array
+
+    for (let i = 0; i < 5; i++) {
+      await sendData(value);
+      await delay(1000); //delay in ms, change depending on in person trials
+    }
+    // await delay(1000); //delay in ms, change depending on in person trials
+    // console.log("printing distances array", distances);
+
+    // const sortedArr = distances.sort((a,b) => a - b);
+    // console.log("printing distances =========");
+    // for (let i = 0; i < 5; i++ ) {
+    //   console.log("i=",i, "| d=", sortedArr[i]);
+    // }
+
+  };  
   function handleRelease() {
     console.log("button released", 0);
     sendData(0);
@@ -476,6 +516,24 @@ export default function App() {
       startConnectionProcess(); // Call the async function
     }}, [permissions]);
 
+    useEffect(()=>{
+      console.log("inside useEffect")
+      //check that we have distance + heading
+      if (distances.length >= 5) { //add condiiton for compass check
+        //calculation
+
+        const sortedArr = distances.sort((a,b) => a - b);
+        console.log("printing distances =========");
+        for (let i = 0; i < 5; i++ ) {
+          console.log("i=",i, "| d=", sortedArr[i]);
+        }
+        console.log("selected median as ", sortedArr[2])
+
+    
+
+      } 
+      //send data to each robot 
+    }, [distances])
 //   return (
 //     <View style={styles.container}>
 //       <Text style={styles.connectionStatus}>{connectionStatus}</Text>
@@ -669,7 +727,7 @@ export default function App() {
 
 return (
   <View style={styles.container}>
-    <Text style={styles.connectionStatus}>{connectionStatus}</Text>
+    <Text style={styles.connectionStatus}>{"Connected"}</Text>
 
     {/* Dropdown Button */}
     <View style={styles.rightAligned}>
@@ -681,10 +739,10 @@ return (
         //}}
         onPress={handleToggleMode}
       >
-      <Text style={styles.buttonText}>
-        {singleConeMode ? `Press to Disable Single ${selectedDevice}` : 'Send To All Devices'}
+      <Text style={singleConeMode ? styles.testButtonText : styles.buttonText }>
+        {singleConeMode ? `Press to Disable Singular Control for Device ${selectedDevice - 10}` : 'Send To All Devices'}
       </Text>
-      <View style={[styles.dot, { backgroundColor: '#00ff00' }]} />
+      {singleConeMode ? null : <View style={[styles.dot, { backgroundColor: '#00ff00' }]} /> }
       </Pressable>
 
       {/* Dropdown Menu. handleSelect(11, 12, or 13) */}
@@ -719,7 +777,7 @@ return (
 
     {/* Realign Cones Button */}
     <View style={styles.centered}>
-      <Pressable style={styles.realignButton} onPressIn={() => handlePress(6)}>
+      <Pressable style={styles.realignButton} onPressIn={() => handleRealign(6)}>
         <Text style={styles.buttonText}>Realign Cones</Text>
         <View style={[styles.dot, { backgroundColor: dotColor }]} />
       </Pressable>
@@ -867,6 +925,12 @@ const styles = StyleSheet.create({
     marginTop: -40,
   },
   buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  testButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 14,

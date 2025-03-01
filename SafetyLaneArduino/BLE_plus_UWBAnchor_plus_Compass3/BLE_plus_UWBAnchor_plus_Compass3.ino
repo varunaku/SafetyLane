@@ -1,4 +1,5 @@
-//currently using board 4 as anchor 1
+//THIS CODE PROBABLY WONT BE USED
+
 // #include <Wire.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>

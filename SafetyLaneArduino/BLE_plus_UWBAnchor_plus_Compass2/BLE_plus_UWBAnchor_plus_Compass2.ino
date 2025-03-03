@@ -68,6 +68,7 @@ BLECharacteristic *pDataCharacteristic;
 String distance = "0";
 float uwb_dist = 0; 
 float compass_heading = 0;
+int turns_made = 0; //positive means right turn, negative means left turn
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -132,8 +133,8 @@ class CharacteristicsCallbacks : public BLECharacteristicCallbacks
     {
       //TODO check whether the code below sends data, or the modified motor1 code
       distance = pCharacteristic->getValue().c_str();
-      compass_heading = get_compass_heading();
-      String temp = String(uwb_dist, 2) + "," + String(compass_heading, 3);;
+      // compass_heading = get_compass_heading();
+      String temp = String(turns_made) + "," + String(compass_heading, 3);;
       Serial.print("String rep: ");
       Serial.println(temp);
       pDataCharacteristic->setValue(const_cast<char *>(temp.c_str()));
@@ -263,19 +264,27 @@ void loop() {
     // Serial.println(distance);
     if (distance == "1") {//TODO:: move the data sending code elsewhere, restore motor functionality
       Serial.println("fwd");
-      set_motor(motors, 100, -100);
+      set_motor(motors, 50, -50);
+      turns_made = 0;
     }
     if (distance == "2") {
     Serial.println("lft");
-      set_motor(motors, 0, -100);
+      //experimentally determine how many set_motor commands have to run to turn the robot ~30 degrees
+      set_motor(motors, -70, -70);
+      turns_made--;
+      delay(250);
     }
     if (distance == "3") {
     Serial.println("rt");
-      set_motor(motors, 100, 0);
+      //experimentally determine how many set_motor comm+ands have to run to turn the robot ~30 degrees
+      set_motor(motors, 70, 70);
+      turns_made++;
+      delay(250);
     }
     if (distance == "4") {
       Serial.println("bk");
-      set_motor(motors, -100, 100);
+      set_motor(motors, -50, 50);
+      turns_made = 0;
     }
     if (distance == "0") {//TODO change distance back to 0 after testing
       // Serial.println("stop");

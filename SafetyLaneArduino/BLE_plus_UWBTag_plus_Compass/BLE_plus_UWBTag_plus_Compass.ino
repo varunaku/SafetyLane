@@ -26,6 +26,7 @@ ESP32MotorControl motors = ESP32MotorControl();
 BLECharacteristic *pDataCharacteristic;
 String distance = "0";
 float compass_heading = 77.777; // TODO:: change this
+int turns_made = 0; //positive means right turn, negative means left turn
 
 #define SPI_SCK 18
 #define SPI_MISO 19
@@ -165,10 +166,9 @@ class CharacteristicsCallbacks : public BLECharacteristicCallbacks
     {//TODO: this writeback is unneeded, but evalute if needed and remove/keep
       distance = pCharacteristic->getValue().c_str();
       // compass_heading = get_compass_heading();
-      float uwb_dist = 0.00;
-      String temp = String(uwb_dist, 2) + "," + String(compass_heading, 3);;
+      String temp = String(turns_made) + "," + String(compass_heading, 3);;
       Serial.print("String rep: ");
-      Serial.println(temp);
+      // Serial.println(temp);
       pDataCharacteristic->setValue(const_cast<char *>(temp.c_str()));
       Serial.print("Value Written before send ");
       Serial.println(pCharacteristic->getValue().c_str());
@@ -241,19 +241,29 @@ void loop() {
     DW1000Ranging.loop();
     if (distance == "1") {
     Serial.println("fwd");
-      set_motor(motors, 100, -100);
+      set_motor(motors, 50, -50);
+      turns_made = 0;
     }
     if (distance == "2") {
     Serial.println("lft");
-      set_motor(motors, 0, -100);
+      //experimentally determine how many set_motor commands have to run to turn the robot ~30 degrees
+      set_motor(motors, -70, -70);
+      turns_made--;
+      delay(250);
+      // distance = "0"; //stops command from turning left anymore
     }
     if (distance == "3") {
-    Serial.println("rt");
-      set_motor(motors, 100, 0);
+      //experimentally determine how many set_motor commands have to run to turn the robot ~30 degrees
+      Serial.println("rt");
+      set_motor(motors, 70, 70);
+      turns_made++;
+      delay(250);
+      // distance = "0";//stops command from turning right anymore
     }
     if (distance == "4") {
       Serial.println("bk");
-      set_motor(motors, -100, 100);
+      set_motor(motors, -50, 50);
+      turns_made = 0;
     }
     if (distance == "0") {
       // Serial.println("stop");
@@ -266,19 +276,19 @@ void loop() {
 
 void newRange()
 {
-  Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
-  Serial.print(",");
-  Serial.println(DW1000Ranging.getDistantDevice()->getRange());
+  // Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
+  // Serial.print(",");
+  // Serial.println(DW1000Ranging.getDistantDevice()->getRange());
 }
  
 void newDevice(DW1000Device *device)
 {
   Serial.print("Device added: ");
-  Serial.println(device->getShortAddress(), HEX);
+  // Serial.println(device->getShortAddress(), HEX);
 }
  
 void inactiveDevice(DW1000Device *device)
 {
   Serial.print("delete inactive device: ");
-  Serial.println(device->getShortAddress(), HEX);
+  // Serial.println(device->getShortAddress(), HEX);
 }

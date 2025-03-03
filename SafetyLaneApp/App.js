@@ -41,7 +41,7 @@ let single_robot_sending_device_2 = 0;
 let single_robot_sending_device_3 = 0;
 
 //Change these variables before starting app
-const number_of_cones = 2;
+const number_of_cones = 3;
 
 
 export default function App() {
@@ -59,6 +59,10 @@ export default function App() {
 
   const [coneSeperation, setConeSeperation] = useState(1);
   const [distances, setDistances] = useState([]); //repurposed for receiving data from esp
+  const [displayDist, setDisplayDist] = useState(0); //repurposed for receiving data from esp
+  const [displayDist2, setDisplayDist2] = useState(0); //repurposed for receiving data from esp
+  const [displayHead, setDisplayHead] = useState(0); //repurposed for receiving data from esp
+  const [displayHead2, setDisplayHead2] = useState(0); //repurposed for receiving data from esp
   const [headings, setHeadings] = useState([]); //repurposed for receiving data from esp
   const [distances2, setDistances2] = useState([]); //repurposed for receiving data from esp
   const [headings2, setHeadings2] = useState([]); //repurposed for receiving data from esp
@@ -475,7 +479,7 @@ export default function App() {
           return result;
         }
         else if (single_robot_sending_device_3 == 1){
-          deviceID = deviceId_newesp32_3;
+          deviceID = deviceId_newesp32_4;
           serviceUUID = SERVICE_UUID_4; //changed from 3
           characteristicUUID = CHARACTERISTIC_UUID_4; //changed from 3
 
@@ -511,6 +515,8 @@ export default function App() {
     const values = val.split(",");
     const dist_val = values[0];
     const head_val = values[1]
+    setDisplayDist(dist_val);
+    setDisplayHead(head_val);
     setDistances((prev) => {
       console.log("running addDistance: ", prev, " vs ", dist_val)
       if (prev.length < 5) {
@@ -531,6 +537,8 @@ export default function App() {
     const values = val.split(",");
     const dist_val = values[0];
     const head_val = values[1]
+    setDisplayDist2(dist_val);
+    setDisplayHead2(head_val);
     setDistances2((prev) => {
       console.log("running addDistance: ", prev, " vs ", dist_val)
       if (prev.length < 5) {
@@ -550,18 +558,101 @@ export default function App() {
     console.log("realign Pressed Down ", value);
     setDistances([]); //init to empty array
     setHeadings([]); //init to empty array
+    setDistances2([]); //init to empty array
+    setHeadings2([]); //init to empty array
 
     for (let i = 0; i < 5; i++) {
       await sendData(value);
-      await delay(1000); //delay in ms, change depending on in person trials
+      await delay(500); //delay in ms, change depending on in person trials
     }
   };  
+  function angleDifference(a, b) {
+    let diff = (b - a + 180) % 360 - 180;
+    return diff < -180 ? diff + 360 : diff;
+  }
+  function degreesToRadians(deg) {
+    return deg * (Math.PI / 180);
+  }
+  
+  function radiansToDegrees(rad) {
+    return rad * (180 / Math.PI);
+  }
+  function findRoot(a, b, c) {
+    //code from https://www.geeksforgeeks.org/javascript-program-to-solve-quadratic-equation/ 
+    let d = b * b - 4 * a * c; 
+    let sqrt_val = Math.sqrt(Math.abs(d)); 
+        console.log('value d is ', d); 
+    if (d > 0) { 
+        console.log('Roots are real and different'); 
+        console.log( 
+            (-b + sqrt_val) / (2 * a) + " and " + 
+            (-b - sqrt_val) / (2 * a) 
+        ); 
+        return [(-b + sqrt_val) / (2 * a), (-b - sqrt_val) / (2 * a) ];
+    } 
+    else if (d == 0) { 
+        console.log('Roots are real and same'); 
+        console.log(-b / (2 * a) + " and " + 
+            -b / (2 * a)); 
+        return [-b / (2 * a)];
+    }   
+    // d < 0 
+    else { 
+        console.log('error in finding direction'); 
+        console.log(
+            (-b / (2 * a)) + " + i" + (sqrt_val / (2 * a)) + " and " + 
+            (-b / (2 * a)) + " - i" + (sqrt_val / (2 * a))
+        );
+        let mag1 = Math.sqrt((b / (2 * a))*(b / (2 * a)) + (sqrt_val / (2 * a))*(sqrt_val / (2 * a)))
+        console.log("magnitude 1: ", mag1)
+        return [mag1];
+    } 
+  }  
+  function computeCone2Correction(d13, d12, bearing1, bearing2, bearing3) {
+    // The ideal position for cone2 is exactly halfway from cone1 to cone3.
+    const idealDistance = d13 / 2;
+    const idealX = idealDistance * Math.cos(degreesToRadians(bearing3));
+    const idealY = idealDistance * Math.sin(degreesToRadians(bearing3));
+  
+    // Current (actual) position of cone2 in Cartesian coordinates.
+    const actualX = d12 * Math.cos(degreesToRadians(bearing2));
+    const actualY = d12 * Math.sin(degreesToRadians(bearing2));
+  
+    // Compute the correction vector from cone2's current position to its ideal position.
+    const dx = idealX - actualX;
+    const dy = idealY - actualY;
+  
+    // The distance to move is the magnitude of the correction vector.
+    const distance = Math.sqrt(dx * dx + dy * dy);
+  
+    // Compute the absolute target angle for movement.
+    let targetAngle = radiansToDegrees(Math.atan2(dy, dx));
+    if (targetAngle < 0) {
+      targetAngle += 360;
+    }
+  
+    // Compute the **relative turn angle** needed.
+    let relativeBearing = targetAngle - bearing2;
+  
+    // Normalize relativeBearing to be within -180° to +180° range for minimal turning.
+    if (relativeBearing > 180) {
+      relativeBearing -= 360;
+    } else if (relativeBearing < -180) {
+      relativeBearing += 360;
+    }
+  
+    return {
+      relativeBearing: relativeBearing.toFixed(2) + "°",
+      distance: distance.toFixed(3) + " m"
+    };
+  }
+  
   async function handleTurnEnd() {
     // -cone1 is moved forward a preset amount, say 3xseperation distance
     //either use delay or do it inside arduino code
     //CONE 1 START ====
     await sendData(1);
-    await delay(100 * 3 * coneSeperation);
+    await delay(2000 * 3 * coneSeperation);
     await sendData(0);
 
 
@@ -571,7 +662,7 @@ export default function App() {
     single_robot_sending_device_2 = 1
     //first move cone 2 1 seperation distance forwards
     await sendData(1);
-    await delay(100 * coneSeperation);
+    await delay(3000 * 1.5 * coneSeperation);
     await sendData(0);
  
     //turn robot 2 the required distance
@@ -580,7 +671,8 @@ export default function App() {
       //>0 means right turn
       for (let i = 0; i < turns_copy; i++) {
         await sendData(3)
-        await delay(100); //either use this delay or a for loop inside the arduino code
+        await delay(100)
+        await sendData(0)
       }
       await sendData(0)
     } else if (turns_copy < 0) {
@@ -588,7 +680,8 @@ export default function App() {
       turns_copy = turns_copy * -1;
       for (let i = 0; i < turns_copy; i++) {
         await sendData(2)
-        await delay(100); //either use this delay or a for loop inside the arduino code
+        await delay(100)
+        await sendData(0)
       }
       await sendData(0)
       turns_copy = turns_copy * -1;
@@ -598,43 +691,53 @@ export default function App() {
     }    
     // cone 2 moves forward 2xseperation distance
     await sendData(1);
-    await delay(100 * 2 * coneSeperation);
+    await delay(2000 * 1.5 * coneSeperation);
     await sendData(0);
 
     //CONE 3 START ====
-    // single_robot_sending_device_2 = 0
-    // single_robot_sending_device_3 = 1
+    single_robot_sending_device_2 = 0
+    single_robot_sending_device_3 = 1
 
-    //cone 3 moves forwards 2 cone seperations 
-    // await sendData(1);
-    // await delay(100 * 2 * coneSeperation);
+    // cone 3 moves forwards 2 cone seperations 
+    await sendData(1);
+    await delay(2000 * 2 * coneSeperation);
+    await sendData(0);
+
+    if (turns_copy > 0) {
+      //>0 means right turn
+      for (let i = 0; i < turns_copy; i++) {
+        await sendData(3)
+        await delay(100)
+        await sendData(0)
+      }
+      await sendData(0)
+    } else if (turns_copy < 0) {
+      // <0 means left turn
+      turns_copy = turns_copy * -1;
+      for (let i = 0; i < turns_copy; i++) {
+        await sendData(2)
+        await delay(100)
+        await sendData(0)
+      }
+      await sendData(0)
+      turns_copy = turns_copy * -1;
+    }
+    else {
+      //0 degree turn, just move forward
+    }    
+    await sendData(1);
+    await delay(2000 *0.5* coneSeperation);
+    await sendData(0);
+
+    single_robot_sending_device_1 = 0;
+    single_robot_sending_device_2 = 0;
+    single_robot_sending_device_3 = 0;
+    all_devices = 1;
+  };
+  async function handleLeftRight(val) {
+    await sendData(val);
+    // await delay(500);
     // await sendData(0);
-
-    // if (turns_copy > 0) {
-    //   //>0 means right turn
-    //   for (let i = 0; i < turns_copy; i++) {
-    //     await sendData(3)
-    //     await delay(100); //either use this delay or a for loop inside the arduino code
-    //   }
-    //   await sendData(0)
-    // } else if (turns_copy < 0) {
-    //   // <0 means left turn
-    //   turns_copy = turns_copy * -1;
-    //   for (let i = 0; i < turns_copy; i++) {
-    //     await sendData(2)
-    //     await delay(100); //either use this delay or a for loop inside the arduino code
-    //   }
-    //   await sendData(0)
-    //   turns_copy = turns_copy * -1;
-    // }
-    // else {
-    //   //0 degree turn, just move forward
-    // }    
-    // await sendData(1);
-    // await delay(100 * coneSeperation);
-    // await sendData(0);
-
-    // sendData(0);
   };
   function handleRelease() {
     console.log("button released", 0);
@@ -669,27 +772,76 @@ export default function App() {
 
     useEffect(()=>{
       //this check is for the middle robot in a line of three
-      if (distances.length >= 5 && headings.length >= 5) { //add condiiton for compass check
+      if (distances.length >= 5 && distances2.length >= 5 && headings.length >= 5 && headings.length >=5) { //add condiiton for compass check
         //calculation
 
         const sortedDist = distances.sort((a,b) => a - b);
         const sortedHead = headings.sort((a,b) => a - b);
+        const sortedDist2 = distances2.sort((a,b) => a - b);
+        const sortedHead2 = headings2.sort((a,b) => a - b);
         console.log("printing distances =========");
         for (let i = 0; i < 5; i++ ) {
           console.log("i=",i, "| d=", sortedDist[i]);
         }
         console.log("selected median as ", sortedDist[2])
         console.log("selected median as ", sortedHead[2])
-        //how are we gonna error correct?
-        //hard code a couple groups, ex: within 30deg of leader, within 90, within 180, then run a hardcoded case 
-        //if distance is <= 4.5, move robot backwards 
-        //if distance is >= 5.5, move robot forwards
-        //if heading is 30deg or more to the left of leading robot, move it backwards a certain amount, then correct 
-        //if heading is 30deg or more to the left of leading robot, move it backwards a certain amount, then correct 
 
+  // ----- Example Usage -----
+        const d13 = sortedDist2[2];       // Cone1 to cone3 distance in meters.
+        const d12 = sortedDist[2];          // Current cone1 to cone2 distance in meters.
+        const bearing1 = leadHeading;   // Cone1's bearing (not used here).
+        const bearing2 = sortedDist2[2];   // Current bearing of cone2 (deviated from ideal).
+        const bearing3 = sortedDist[2];   // Bearing from cone1 to cone3 (ideal line).
+        
+        const correction = computeCone2Correction(d13, d12, bearing1, bearing2, bearing3);
+        
+        console.log("Relative Bearing: " + correction.relativeBearing);
+        console.log("Correction Distance: " + correction.distance);
+  
+        all_devices = 0;
+        single_robot_sending_device_2 = 1;
+        //lets say the robot turns 15 degrees for each left/right assignment
+        const data = async (headings2, headings, desired_turn, desired_dist, leadHeading) => { //this function is just so we can use async await
+          //first turn robot towards desired location
+          if (headings2[2] > headings[2]) {
+              for (let i = 0; i < Math.floor(desired_turn/15); i++){
+                await sendData(3);
+              }
+              await sendData(0)
+    
+            } else if (headings2[2] < headings[2]) {
+              for (let i = 0; i < Math.floor(desired_turn/15); i++){
+                await sendData(4);
+              }
+              await sendData(0)
+            }  
+          //next move robot a certain amount
+          await sendData(1);
+          let m_to_ms = 1000;
+          await delay(desired_dist*m_to_ms); //use a constant based on how long it takes to move 0.5m
+          //finally turn robot to face leader
+          let current_heading = (headings2[2] + desired_turn) % 360;
+
+          if (current_heading > leadHeading) {
+            for (let i = 0; i < Math.floor((current_heading - leadHeading)/15); i++){
+              await sendData(3);
+            }
+            await sendData(0)
+  
+          } else if (current_heading < leadHeading) {
+            for (let i = 0; i < Math.floor((current_heading - leadHeading)/15); i++){
+              await sendData(4);
+            }
+            await sendData(0)
+          }           
+        }
+
+        data(headings2, headings, correction.relativeBearing, correction.distance, leadHeading);                
+        all_devices = 1;
+        single_robot_sending_device_2 = 0;
       } 
       //send data to each robot 
-    }, [distances])
+    }, [distances, distances2])
     useEffect(()=>{
       //check that we have distance + heading
       if (distances2.length >= 5 && headings2.length >=5) { //add condiiton for compass check
@@ -713,8 +865,92 @@ return (
   <View style={styles.container}>
     <Text style={styles.connectionStatus}>{"Connected"}</Text>
 
-    {/* Dropdown Button */}
-    <View style={styles.rightAligned}>
+    {/* <View style={styles.dataBox}>
+        <Text style={styles.buttonText}>UWB Distance Cone 1 to 2: {displayDist}</Text>
+        <Text style={styles.buttonText}>UWB Distance Cone 1 to 3: {displayDist2}</Text>
+        <Text style={styles.buttonText}>Heading from Cone 1: {leadHeading}</Text>
+        <Text style={styles.buttonText}>Heading From Cone 2: {displayHead}</Text>
+        <Text style={styles.buttonText}>Heading From Cone 3: {displayHead2}</Text>
+      </View> */}
+
+
+    {/* Cone Separation Input */}
+    <View style={styles.topRight}>
+      <View style={styles.inputContainer}>
+        <Text style={styles.buttonText}>Cone Separation: </Text>
+        <TextInput
+          style={styles.textInput}
+          onChangeText={setConeSeperation}
+          onSubmitEditing={onSubmitSeperation}
+          value={coneSeperation.toString()}
+          defaultValue="1"
+          keyboardType="numeric"
+        />
+        <Text style={styles.buttonText}>m</Text>
+      </View>
+    </View>
+
+    {/* Realign Cones Button */}
+    <View style={styles.centered}>
+    <Pressable style={styles.realignButton} onPressIn={() => handleRealign(6)}>
+          <Text style={styles.buttonText}>Realign Cones</Text>
+          <View style={[styles.dot, { backgroundColor: dotColor }]} />
+        </Pressable>
+        <View style={styles.buttonBox}>
+        <Pressable style={styles.realignButton2} onPressIn={() => {
+          //disable other button inputs
+          single_robot_sending_device_1 = 1
+          all_devices = 0;
+          handlePress(7)
+          }}>
+          <Text style={styles.buttonText}>Start Turn</Text>
+          <View style={[styles.dot, { backgroundColor: dotColor }]} />
+        </Pressable>
+          <View style={styles.paddingBox}></View>
+        <Pressable style={styles.realignButton2} onPressIn={() => {
+          //re-enable other button inputs
+          handleTurnEnd()
+          }}>
+          <Text style={styles.buttonText}>End Turn</Text>
+          <View style={[styles.dot, { backgroundColor: dotColor }]} />
+        </Pressable>
+      </View>
+      {/* D-Pad Controls */}
+      <View style={styles.dPadContainer}>
+        <Pressable
+          style={[styles.buttonContainer, styles.upButton]}
+          onPressIn={() => handlePress(1)}
+          onPressOut={handleRelease}
+        >
+          <Text style={styles.buttonText}>Forward</Text>
+        </Pressable>
+        <View style={styles.middleRow}>
+          <Pressable
+            style={[styles.buttonContainer, styles.leftButton]}
+            onPressIn={() => handlePress(2)}
+            onPressOut={handleRelease}
+          >
+            <Text style={styles.buttonText}>Left</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.buttonContainer, styles.rightButton]}
+            onPressIn={() => {handleLeftRight(3)}}
+            onPressOut={handleRelease}
+          >
+            <Text style={styles.buttonText}>Right</Text>
+          </Pressable>
+        </View>
+        <Pressable
+          style={[styles.buttonContainer, styles.downButton]}
+          onPressIn={() => handleLeftRight(4)}
+          onPressOut={handleRelease}
+        >
+          <Text style={styles.buttonText}>Back</Text>
+        </Pressable>
+      </View>      
+    </View>
+        {/* Dropdown Button */}
+        <View style={styles.alignButton}>
       <Pressable
         style={styles.realignButton}
         //</View>onPress={() => {
@@ -743,79 +979,6 @@ return (
       )}
     </View>
 
-    {/* Cone Separation Input */}
-    <View style={styles.topRight}>
-      <View style={styles.inputContainer}>
-        <Text style={styles.buttonText}>Cone Separation: </Text>
-        <TextInput
-          style={styles.textInput}
-          onChangeText={setConeSeperation}
-          onSubmitEditing={onSubmitSeperation}
-          value={coneSeperation.toString()}
-          defaultValue="1"
-          keyboardType="numeric"
-        />
-        <Text style={styles.buttonText}>m</Text>
-      </View>
-    </View>
-
-    {/* Realign Cones Button */}
-    <View style={styles.centered}>
-    <Pressable style={styles.realignButton} onPressIn={() => handleRealign(6)}>
-        <Text style={styles.buttonText}>Realign Cones</Text>
-        <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      </Pressable>
-      <Pressable style={styles.realignButton} onPressIn={() => {
-        //disable other button inputs
-        single_robot_sending_device_1 = 1
-        all_devices = 0;
-        handlePress(7)
-        }}>
-        <Text style={styles.buttonText}>Start Turn</Text>
-        <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      </Pressable>
-      <Pressable style={styles.realignButton} onPressIn={() => {
-        //re-enable other button inputs
-        handleTurnEnd()
-        }}>
-        <Text style={styles.buttonText}>End Turn</Text>
-        <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      </Pressable>
-
-      {/* D-Pad Controls */}
-      <View style={styles.dPadContainer}>
-        <Pressable
-          style={[styles.buttonContainer, styles.upButton]}
-          onPressIn={() => handlePress(1)}
-          onPressOut={handleRelease}
-        >
-          <Text style={styles.buttonText}>Forward</Text>
-        </Pressable>
-        <View style={styles.middleRow}>
-          <Pressable
-            style={[styles.buttonContainer, styles.leftButton]}
-            onPressIn={() => handlePress(2)}
-            onPressOut={handleRelease}
-          >
-            <Text style={styles.buttonText}>Left</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.buttonContainer, styles.rightButton]}
-            onPressIn={() => handlePress(3)}
-            onPressOut={handleRelease}
-          >
-            <Text style={styles.buttonText}>Right</Text>
-          </Pressable>
-        </View>
-        <Pressable
-          style={[styles.buttonContainer, styles.downButton]}
-          onPressIn={() => handlePress(4)}
-          onPressOut={handleRelease}
-        >
-          <Text style={styles.buttonText}>Back</Text>
-        </Pressable>
-      </View>
-    </View>
 
     <StatusBar style="auto" />
   </View>
@@ -874,6 +1037,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     position: 'relative',
+  },
+  realignButton2: {
+    alignItems: 'center',
+    backgroundColor: '#ff4500',
+    borderRadius: 5,
+    marginBottom: 20,
+    padding: 10,
+    width: 90,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  paddingBox: {
+    margin: 10,
   },
   dPadContainer: {
     width: 250,
@@ -949,6 +1126,20 @@ const styles = StyleSheet.create({
     right: 85,
     top: '83%',
     transform: [{ translateY: -20 }], // Center vertically
+  },
+  alignButton: {
+    position: 'absolute',
+    right: 85,
+    top: '83%',
+    transform: [{ translateY: -20 }], // Center vertically
+  },
+  buttonBox: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  dataBox: {
+    position: 'absolute',
+    top: "10%",
   },
   // Added Styles for Dropdown Menu
   dropdown: {

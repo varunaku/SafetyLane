@@ -35,14 +35,13 @@ const deviceId_newesp32_4 = "3C:E9:0E:72:2B:4A";
 // const stepData_UUID = "2b7edb9e-2a2a-41d6-bd93-ad34f8c6cc11";
 
 let device_number = 0;
-let all_devices = 1;
+let all_devices = 0;
 let single_robot_sending_device_1 = 0;
 let single_robot_sending_device_2 = 0;
 let single_robot_sending_device_3 = 0;
 
 //Change these variables before starting app
 const number_of_cones = 3;
-
 
 export default function App() {
 
@@ -316,21 +315,22 @@ export default function App() {
     }
   };  
 
-  async function sendData(value) { 
+
+async function sendData(value) { 
     console.log("new value ====", value);
     console.log("all_devices variable is: ", all_devices);
     try {
 
-      if(value == 9){
-        if(all_devices == 1){
-          all_devices = 0;
-          return null;
-        }
-        else if(all_devices == 0){
-          all_devices = 1;
-          return null;
-        }
-      }
+      // if(value == 9){
+      //   if(all_devices == 1){
+      //     all_devices = 0;
+      //     return null;
+      //   }
+      //   else if(all_devices == 0){
+      //     all_devices = 1;
+      //     return null;
+      //   }
+      // }
       if(value == 11){
         if(single_robot_sending_device_1 == 0){
           single_robot_sending_device_1 = 1;
@@ -442,69 +442,43 @@ export default function App() {
         console.log(single_robot_sending_device_1);
         console.log(single_robot_sending_device_2);
         console.log(single_robot_sending_device_3);
-        // Find the specfied device and send data
+        
         if (single_robot_sending_device_1 == 1){
-          //TODO:: CHANGE THIS BACK TO 1 after testing
           deviceID = deviceId_newesp32_3;
           serviceUUID = SERVICE_UUID_3;
           characteristicUUID = CHARACTERISTIC_UUID_3;
-
-          console.log("ServiceUUID is:", serviceUUID);
-          console.log("CharacteristicUUID is: ", characteristicUUID);
-          encodedData = btoa(value.toString());
-          let result = await bleManager.writeCharacteristicWithResponseForDevice(
-            deviceID,
-            serviceUUID,
-            characteristicUUID,
-            encodedData
-          );
-          console.log("Send data only to device 1");
-          return result;
         }
-        else if (single_robot_sending_device_2 == 1){
+        else if (single_robot_sending_device_2 == 1 || [15, 16, 17, 18].includes(value)){
           deviceID = deviceId_newesp32_2;
-          serviceUUID = SERVICE_UUID_2; 
-          characteristicUUID = CHARACTERISTIC_UUID_2; 
-
-          console.log("ServiceUUID is:", serviceUUID);
-          console.log("CharacteristicUUID is: ", characteristicUUID);
-          encodedData = btoa(value.toString());
-          let result = await bleManager.writeCharacteristicWithResponseForDevice(
-            deviceID,
-            serviceUUID,
-            characteristicUUID,
-            encodedData
-          );
-          console.log("Send data only to device 2");
-          return result;
+          serviceUUID = SERVICE_UUID_2;
+          characteristicUUID = CHARACTERISTIC_UUID_2;
         }
-        else if (single_robot_sending_device_3 == 1){
+        else if (single_robot_sending_device_3 == 1 || [1, 2, 3, 4].includes(value)){
           deviceID = deviceId_newesp32_4;
-          serviceUUID = SERVICE_UUID_4; //changed from 3
-          characteristicUUID = CHARACTERISTIC_UUID_4; //changed from 3
-
-          console.log("ServiceUUID is:", serviceUUID);
-          console.log("CharacteristicUUID is: ", characteristicUUID);
-          encodedData = btoa(value.toString());
-          let result = await bleManager.writeCharacteristicWithResponseForDevice(
-            deviceID,
-            serviceUUID,
-            characteristicUUID,
-            encodedData
-          );
-          console.log("Send data only to device 3");
-          return result;
+          serviceUUID = SERVICE_UUID_4;
+          characteristicUUID = CHARACTERISTIC_UUID_4;
         }
         else {
           console.log("No valid device selected");
           return null; // Handle case where no device is selected
         }
+
+        console.log("ServiceUUID is:", serviceUUID);
+        console.log("CharacteristicUUID is: ", characteristicUUID);
+        encodedData = btoa(value.toString());
+        let result = await bleManager.writeCharacteristicWithResponseForDevice(
+          deviceID,
+          serviceUUID,
+          characteristicUUID,
+          encodedData
+        );
+        console.log("Send data only to device", deviceID);
+        return result;
       }
-    
     } catch (err) {
       console.log("Error: ", err)
     }
-  };
+};
 
   function handlePress(value) {
     console.log("pressable Pressed Down ", value);
@@ -947,37 +921,48 @@ return (
         >
           <Text style={styles.buttonText}>Back</Text>
         </Pressable>
-      </View>      
-    </View>
-        {/* Dropdown Button */}
-        <View style={styles.alignButton}>
+      </View>    
+        //////////////////////////////////
+      <View style={styles.smallJoystickContainer}>
+  <Text style={styles.joystickLabel}>Device 2</Text>
+  <View style={styles.smallDPadContainer}>
+    <Pressable
+      style={styles.smallUpButton}
+      onPressIn={() => handlePress(15)}
+      onPressOut={() => handleRelease}
+    >
+      <Text style={styles.buttonText}>↑</Text>
+    </Pressable>
+    <View style={styles.middleRow}>
       <Pressable
-        style={styles.realignButton}
-        //</View>onPress={() => {
-          //handlePress(9); // Send 9 when button is pressed
-          //setDropdownVisible(!isDropdownVisible); // Toggle dropdown visibility
-        //}}
-        onPress={handleToggleMode}
+        style={styles.smallLeftButton}
+        onPressIn={() => handlePress(16)}
+        onPressOut={() => handleRelease}
       >
-      <Text style={singleConeMode ? styles.testButtonText : styles.buttonText }>
-        {singleConeMode ? `Press to Disable Singular Control for Device ${selectedDevice - 10}` : 'Send To All Devices'}
-      </Text>
-      {singleConeMode ? null : <View style={[styles.dot, { backgroundColor: '#00ff00' }]} /> }
+        <Text style={styles.buttonText}>←</Text>
       </Pressable>
-
-      {/* Dropdown Menu. handleSelect(11, 12, or 13) */}
-      {isDropdownVisible && (
-        <View style={styles.dropdown}>
-        <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
-          {[1, 2, 3].map((item) => (
-            <Pressable key={item} style={styles.dropdownItem} onPress={() => {handlePress(item + 10); handleSelect(item + 10);}}> 
-              <Text style={styles.buttonText}>Cone {item}</Text>
-            </Pressable>
-          ))}
-          </ScrollView>
-        </View>
-      )}
+      <Pressable
+        style={styles.smallRightButton}
+        onPressIn={() => handlePress(17)}
+        onPressOut={() => handleRelease}
+      >
+        <Text style={styles.buttonText}>→</Text>
+      </Pressable>
     </View>
+    <Pressable
+      style={styles.smallDownButton}
+      onPressIn={() => handlePress(18)}
+      onPressOut={() => handleRelease}
+    >
+      <Text style={styles.buttonText}>↓</Text>
+    </Pressable>
+  </View>
+</View>
+
+    </View>
+    
+       // {/* Dropdown Button */}
+      
 
 
     <StatusBar style="auto" />
@@ -992,6 +977,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
+  smallJoystickContainer: {
+  alignItems: 'center',
+  marginTop: 20,
+},
+smallDPadContainer: {
+  width: 120,
+  height: 120,
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: '#444',
+  borderRadius: 60,
+  padding: 5,
+},
+smallUpButton: {
+  position: 'absolute',
+  top: 0,
+  left: '50%',
+  marginLeft: -20,
+  backgroundColor: '#ff4500',
+  padding: 10,
+  borderRadius: 10,
+},
+smallDownButton: {
+  position: 'absolute',
+  bottom: 0,
+  left: '50%',
+  marginLeft: -20,
+  backgroundColor: '#ff4500',
+  padding: 10,
+  borderRadius: 10,
+},
+smallLeftButton: {
+  position: 'absolute',
+  left: 0,
+  top: '50%',
+  marginTop: -20,
+  backgroundColor: '#ff4500',
+  padding: 10,
+  borderRadius: 10,
+},
+smallRightButton: {
+  position: 'absolute',
+  right: 0,
+  top: '50%',
+  marginTop: -20,
+  backgroundColor: '#ff4500',
+  padding: 10,
+  borderRadius: 10,
+},
+
   connectionStatus: {
     color: '#00ffff',
     fontSize: 20,
